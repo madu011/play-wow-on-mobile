@@ -29,14 +29,13 @@ jobs:
           java-version: '17'
       - name: Install Android build dependencies
         run: |
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888"
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888" "cmake;3.22.1"
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
       - name: Build runtime APK
         working-directory: runtime-source
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/24.0.8215888
-          ANDROID_NDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}/ndk/24.0.8215888
         run: |
+          export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/24.0.8215888"
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
       - name: Upload runtime APK
