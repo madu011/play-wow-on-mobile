@@ -27,12 +27,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Install Android build dependencies
         run: |
-          sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888"
-          yes | sdkmanager --licenses
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888"
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
       - name: Build runtime APK
         working-directory: runtime-source
         env:
