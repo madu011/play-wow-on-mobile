@@ -1,0 +1,49 @@
+name: Build Azeroth Mobile runtime APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-runtime-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Azeroth Mobile project
+        uses: actions/checkout@v4
+      - name: Checkout WoW Mobile runtime base
+        uses: actions/checkout@v4
+        with:
+          repository: marcocastignoli/wow-mobile
+          ref: main
+          path: runtime-source
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android build dependencies
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888"
+          yes | sdkmanager --licenses
+      - name: Build runtime APK
+        working-directory: runtime-source
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/24.0.8215888
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}/ndk/24.0.8215888
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Upload runtime APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: azeroth-mobile-runtime-base
+          path: runtime-source/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
