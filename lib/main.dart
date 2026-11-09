@@ -221,7 +221,7 @@ class _LauncherPageState extends State<LauncherPage> {
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    activeColor: gold,
+                    activeThumbColor: gold,
                     title: const Text('Low graphics mode'),
                     subtitle: const Text('Recommended for initial testing',
                         style: TextStyle(color: muted, fontSize: 11)),
@@ -231,7 +231,7 @@ class _LauncherPageState extends State<LauncherPage> {
                   const Divider(color: Color(0xFF293448)),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    activeColor: gold,
+                    activeThumbColor: gold,
                     title: const Text('Touch control overlay'),
                     subtitle: const Text('Virtual buttons and movement controls',
                         style: TextStyle(color: muted, fontSize: 11)),
