@@ -31,16 +31,16 @@ jobs:
         run: |
           $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888" "cmake;3.22.1"
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
-      - name: Build runtime APK
+      - name: Build installable debug APK
         working-directory: runtime-source
         run: |
           export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/24.0.8215888"
           export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon
       - name: Upload runtime APK
         uses: actions/upload-artifact@v4
         with:
-          name: azeroth-mobile-runtime-base
-          path: runtime-source/app/build/outputs/apk/**/*.apk
+          name: azeroth-mobile-runtime-debug
+          path: runtime-source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
