@@ -1,122 +1,302 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() => runApp(const AzerothApp());
+
+const bg = Color(0xFF090D16);
+const panel = Color(0xFF141C2B);
+const gold = Color(0xFFE2B45D);
+const muted = Color(0xFF9AA8BC);
+
+class AzerothApp extends StatelessWidget {
+  const AzerothApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Azeroth Mobile',
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: bg,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: gold,
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          fontFamily: 'Roboto',
+        ),
+        home: const LauncherPage(),
+      );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class LauncherPage extends StatefulWidget {
+  const LauncherPage({super.key});
 
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+  State<LauncherPage> createState() => _LauncherPageState();
+}
+
+class _LauncherPageState extends State<LauncherPage> {
+  String? gameFolder;
+  final serverController = TextEditingController();
+  bool lowGraphics = true;
+  bool showTouchControls = true;
+
+  @override
+  void dispose() {
+    serverController.dispose();
+    super.dispose();
+  }
+
+  Future<void> chooseGameFolder() async {
+    final result = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select your WoW 3.3.5a folder',
+    );
+    if (result != null && mounted) {
+      setState(() => gameFolder = result);
+    }
+  }
+
+  void showInfo(String title, String message) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: panel,
+        title: Text(title, style: const TextStyle(color: gold)),
+        content: Text(message, style: const TextStyle(color: muted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: gold.withValues(alpha: .13),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: gold.withValues(alpha: .45)),
+                  ),
+                  child: const Icon(Icons.shield_moon, color: gold, size: 29),
+                ),
+                const SizedBox(width: 13),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AZEROTH MOBILE',
+                          style: TextStyle(
+                              color: gold,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2)),
+                      Text('WRATH OF THE LICH KING · 3.3.5a',
+                          style: TextStyle(color: muted, fontSize: 10)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => showInfo(
+                    'About Azeroth Mobile',
+                    'A community launcher prototype. The Windows game runtime and graphics compatibility layer are not bundled in this first build.',
+                  ),
+                  icon: const Icon(Icons.info_outline, color: muted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 26),
+            Container(
+              height: 176,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF263750), Color(0xFF101827), Color(0xFF392A25)],
+                ),
+                border: Border.all(color: gold.withValues(alpha: .35)),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(right: 18, top: 15,
+                    child: Icon(Icons.ac_unit, size: 118,
+                        color: Colors.white.withValues(alpha: .07))),
+                  const Positioned(
+                    left: 20, bottom: 20, right: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('YOUR ADVENTURE', style: TextStyle(
+                            color: Colors.white, fontSize: 25,
+                            fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        Text('BEGINS IN NORTHREND',
+                            style: TextStyle(color: gold, fontSize: 12,
+                                letterSpacing: 2, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            _sectionTitle('GAME CLIENT'),
+            _panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.folder_open, color: gold),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('WoW game folder',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    _status(gameFolder == null ? 'NOT SELECTED' : 'SELECTED',
+                        gameFolder == null ? Colors.orangeAccent : Colors.greenAccent),
+                  ]),
+                  const SizedBox(height: 10),
+                  Text(
+                    gameFolder ?? 'Choose the folder containing Wow.exe and Data/',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: chooseGameFolder,
+                    icon: const Icon(Icons.drive_folder_upload),
+                    label: const Text('IMPORT GAME FOLDER'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gold,
+                      side: const BorderSide(color: gold),
+                      minimumSize: const Size.fromHeight(46),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('SERVER'),
+            _panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Realmlist / server address',
+                      style: TextStyle(color: muted, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: serverController,
+                    decoration: InputDecoration(
+                      hintText: 'logon.example-server.com',
+                      filled: true,
+                      fillColor: bg,
+                      prefixIcon: const Icon(Icons.dns, color: gold),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  const Text('Enter the address provided by your server.',
+                      style: TextStyle(color: muted, fontSize: 11)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('PERFORMANCE & CONTROLS'),
+            _panel(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: gold,
+                    title: const Text('Low graphics mode'),
+                    subtitle: const Text('Recommended for initial testing',
+                        style: TextStyle(color: muted, fontSize: 11)),
+                    value: lowGraphics,
+                    onChanged: (v) => setState(() => lowGraphics = v),
+                  ),
+                  const Divider(color: Color(0xFF293448)),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: gold,
+                    title: const Text('Touch control overlay'),
+                    subtitle: const Text('Virtual buttons and movement controls',
+                        style: TextStyle(color: muted, fontSize: 11)),
+                    value: showTouchControls,
+                    onChanged: (v) => setState(() => showTouchControls = v),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 58,
+              child: FilledButton.icon(
+                onPressed: () => showInfo(
+                  'Runtime not ready',
+                  'The launcher interface is in place, but the ARM64 Windows compatibility runtime and Mali graphics backend still need to be integrated and tested. This button does not launch WoW yet.',
+                ),
+                icon: const Icon(Icons.play_arrow, size: 28),
+                label: const Text('PLAY WORLD OF WARCRAFT',
+                    style: TextStyle(fontWeight: FontWeight.w900,
+                        letterSpacing: 1)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: gold,
+                  foregroundColor: const Color(0xFF17120A),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 13),
+            const Center(
+              child: Text('LAUNCHER PREVIEW · GAME ENGINE INTEGRATION PENDING',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: muted, fontSize: 9, letterSpacing: 1)),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+
+  Widget _sectionTitle(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: Text(text, style: const TextStyle(
+            color: gold, fontSize: 11, fontWeight: FontWeight.w800,
+            letterSpacing: 1.5)),
+      );
+
+  Widget _panel({required Widget child}) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: panel,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: const Color(0xFF263448)),
+        ),
+        child: child,
+      );
+
+  Widget _status(String text, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(text, style: TextStyle(
+            color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+      );
 }
