@@ -85,6 +85,41 @@ jobs:
                               }""")
           p.write_text(s)
           PY
+      - name: Add floating soft-keyboard shortcut
+        working-directory: runtime-source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/winlator/XServerDisplayActivity.java")
+          s = p.read_text()
+          def once(old, new):
+              global s
+              if old not in s:
+                  raise SystemExit("Expected activity section not found: " + old[:100])
+              s = s.replace(old, new, 1)
+          once("import android.view.KeyEvent;\n", "import android.view.KeyEvent;\nimport android.view.Gravity;\n")
+          once("import android.widget.ArrayAdapter;\n", "import android.widget.ArrayAdapter;\nimport android.widget.Button;\n")
+          once("""        rootView.addView(inputControlsView);
+
+                  if (container != null""", """        rootView.addView(inputControlsView);
+
+                  Button floatingKeyboardButton = new Button(this);
+                  floatingKeyboardButton.setText("⌨");
+                  floatingKeyboardButton.setTextSize(20);
+                  floatingKeyboardButton.setAllCaps(false);
+                  floatingKeyboardButton.setContentDescription("Open keyboard");
+                  floatingKeyboardButton.setOnClickListener(view -> AppUtils.showKeyboard(this));
+                  FrameLayout.LayoutParams keyboardParams = new FrameLayout.LayoutParams(
+                      (int)(52 * getResources().getDisplayMetrics().density),
+                      (int)(52 * getResources().getDisplayMetrics().density),
+                      Gravity.BOTTOM | Gravity.END);
+                  int keyboardMargin = (int)(16 * getResources().getDisplayMetrics().density);
+                  keyboardParams.setMargins(keyboardMargin, keyboardMargin, keyboardMargin, keyboardMargin);
+                  rootView.addView(floatingKeyboardButton, keyboardParams);
+
+                  if (container != null""")
+          p.write_text(s)
+          PY
       - name: Build installable debug APK
         working-directory: runtime-source
         run: |
