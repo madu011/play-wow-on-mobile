@@ -128,7 +128,7 @@ jobs:
           import re
           p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
           s = p.read_text()
-          pattern = r"    private boolean hasExternalControllerConnected\\(\\) \\{.*?^    \\}"
+          pattern = r"    private boolean hasExternalControllerConnected\(\) \{.*?^    \}"
           replacement = """    private boolean hasExternalControllerConnected() {
                   if (profile == null) return false;
                   for (int deviceId : InputDevice.getDeviceIds()) {
