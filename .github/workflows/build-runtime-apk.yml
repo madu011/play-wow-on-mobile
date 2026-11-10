@@ -31,6 +31,60 @@ jobs:
         run: |
           $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;24.0.8215888" "cmake;3.22.1"
           yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Patch runtime for controller mouse and touch handoff
+        working-directory: runtime-source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
+          s = p.read_text()
+          def once(old, new):
+              global s
+              if old not in s:
+                  raise SystemExit("Expected source section not found: " + old[:90])
+              s = s.replace(old, new, 1)
+          once("import android.view.KeyEvent;\n", "import android.view.KeyEvent;\nimport android.view.InputDevice;\n")
+          once("    private boolean showTouchscreenControls = true;\n", "    private boolean showTouchscreenControls = true;\n    private boolean externalControllerActive = false;\n")
+          once("            if (showTouchscreenControls) for (ControlElement element : elements) element.draw(canvas);", """            externalControllerActive = hasExternalControllerConnected();
+                      if (showTouchscreenControls) for (ControlElement element : elements) {
+                          if (!externalControllerActive || !isMovementControl(element)) element.draw(canvas);
+                      }""")
+          once("    private synchronized ControlElement intersectElement(float x, float y) {", """    private boolean hasExternalControllerConnected() {
+              for (int deviceId : InputDevice.getDeviceIds()) {
+                  InputDevice device = InputDevice.getDevice(deviceId);
+                  if (device != null && (device.supportsSource(InputDevice.SOURCE_GAMEPAD) ||
+                      device.supportsSource(InputDevice.SOURCE_JOYSTICK))) return true;
+              }
+              return false;
+          }
+
+          private boolean isMovementControl(ControlElement element) {
+              return element.getType() == ControlElement.Type.D_PAD ||
+                     element.getType() == ControlElement.Type.STICK;
+          }
+
+          private synchronized ControlElement intersectElement(float x, float y) {""")
+          once("        final float[] values = {state.thumbLX, state.thumbLY, state.thumbRX, state.thumbRY, state.getDPadX(), state.getDPadY()};", """        final float[] values = {state.thumbLX, state.thumbLY, state.thumbRX, state.thumbRY, state.getDPadX(), state.getDPadY()};
+                  externalControllerActive = true;
+                  mouseMoveOffset.x = Math.abs(state.thumbRX) > ControlElement.STICK_DEAD_ZONE ? state.thumbRX : 0;
+                  mouseMoveOffset.y = Math.abs(state.thumbRY) > ControlElement.STICK_DEAD_ZONE ? state.thumbRY : 0;
+                  if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) createMouseMoveTimer();
+                  invalidate();""")
+          once("                    for (ControlElement element : profile.getElements()) {\n                        if (element.handleTouchDown(pointerId, x, y)) handled = true;", """                    externalControllerActive = hasExternalControllerConnected();
+                              for (ControlElement element : profile.getElements()) {
+                                  if (externalControllerActive && isMovementControl(element)) continue;
+                                  if (element.handleTouchDown(pointerId, x, y)) handled = true;""")
+          once("                        for (ControlElement element : profile.getElements()) {\n                            if (element.handleTouchMove(movePointerId, x, y)) handled = true;", """                        externalControllerActive = hasExternalControllerConnected();
+                                  for (ControlElement element : profile.getElements()) {
+                                      if (externalControllerActive && isMovementControl(element)) continue;
+                                      if (element.handleTouchMove(movePointerId, x, y)) handled = true;""")
+          once("                    for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId, x, y)) handled = true;", """                    externalControllerActive = hasExternalControllerConnected();
+                              for (ControlElement element : profile.getElements()) {
+                                  if (externalControllerActive && isMovementControl(element)) continue;
+                                  if (element.handleTouchUp(pointerId, x, y)) handled = true;
+                              }""")
+          p.write_text(s)
+          PY
       - name: Build installable debug APK
         working-directory: runtime-source
         run: |
