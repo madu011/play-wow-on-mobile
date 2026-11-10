@@ -125,27 +125,22 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
           s = p.read_text()
-          old = """    private boolean hasExternalControllerConnected() {
-                      for (int deviceId : InputDevice.getDeviceIds()) {
-                          InputDevice device = InputDevice.getDevice(deviceId);
-                          if (device != null && (device.supportsSource(InputDevice.SOURCE_GAMEPAD) ||
-                              device.supportsSource(InputDevice.SOURCE_JOYSTICK))) return true;
-                      }
-                      return false;
-                  }"""
-          new = """    private boolean hasExternalControllerConnected() {
-                      if (profile == null) return false;
-                      for (int deviceId : InputDevice.getDeviceIds()) {
-                          ExternalController controller = profile.getController(deviceId);
-                          if (controller != null && controller.isConnected()) return true;
-                      }
-                      return false;
-                  }"""
-          if old not in s:
-              raise SystemExit("Expected controller detection method not found")
-          p.write_text(s.replace(old, new, 1))
+          pattern = r"    private boolean hasExternalControllerConnected\\(\\) \\{.*?^    \\}"
+          replacement = """    private boolean hasExternalControllerConnected() {
+                  if (profile == null) return false;
+                  for (int deviceId : InputDevice.getDeviceIds()) {
+                      ExternalController controller = profile.getController(deviceId);
+                      if (controller != null && controller.isConnected()) return true;
+                  }
+                  return false;
+              }"""
+          updated, count = re.subn(pattern, lambda m: replacement, s, count=1, flags=re.S | re.M)
+          if count != 1:
+              raise SystemExit("Could not locate controller detection method")
+          p.write_text(updated)
           PY
       - name: Build installable debug APK
         working-directory: runtime-source
