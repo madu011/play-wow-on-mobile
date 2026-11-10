@@ -120,6 +120,33 @@ jobs:
                   if (container != null""")
           p.write_text(s)
           PY
+      - name: Restrict controller handoff to active profile controllers
+        working-directory: runtime-source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
+          s = p.read_text()
+          old = """    private boolean hasExternalControllerConnected() {
+                      for (int deviceId : InputDevice.getDeviceIds()) {
+                          InputDevice device = InputDevice.getDevice(deviceId);
+                          if (device != null && (device.supportsSource(InputDevice.SOURCE_GAMEPAD) ||
+                              device.supportsSource(InputDevice.SOURCE_JOYSTICK))) return true;
+                      }
+                      return false;
+                  }"""
+          new = """    private boolean hasExternalControllerConnected() {
+                      if (profile == null) return false;
+                      for (int deviceId : InputDevice.getDeviceIds()) {
+                          ExternalController controller = profile.getController(deviceId);
+                          if (controller != null && controller.isConnected()) return true;
+                      }
+                      return false;
+                  }"""
+          if old not in s:
+              raise SystemExit("Expected controller detection method not found")
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Build installable debug APK
         working-directory: runtime-source
         run: |
