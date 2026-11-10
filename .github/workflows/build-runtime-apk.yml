@@ -120,28 +120,6 @@ jobs:
                   if (container != null""")
           p.write_text(s)
           PY
-      - name: Restrict controller handoff to active profile controllers
-        working-directory: runtime-source
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
-          s = p.read_text()
-          pattern = r"    private boolean hasExternalControllerConnected\(\) \{.*?^    \}"
-          replacement = """    private boolean hasExternalControllerConnected() {
-                  if (profile == null) return false;
-                  for (int deviceId : InputDevice.getDeviceIds()) {
-                      ExternalController controller = profile.getController(deviceId);
-                      if (controller != null && controller.isConnected()) return true;
-                  }
-                  return false;
-              }"""
-          updated, count = re.subn(pattern, lambda m: replacement, s, count=1, flags=re.S | re.M)
-          if count != 1:
-              raise SystemExit("Could not locate controller detection method")
-          p.write_text(updated)
-          PY
       - name: Add app author credit
         working-directory: runtime-source
         run: |
