@@ -43,8 +43,8 @@ jobs:
               if old not in s:
                   raise SystemExit("Expected source section not found: " + old[:90])
               s = s.replace(old, new, 1)
-          once("import android.view.KeyEvent;\\n", "import android.view.KeyEvent;\\nimport android.view.InputDevice;\\n")
-          once("    private boolean showTouchscreenControls = true;\\n", "    private boolean showTouchscreenControls = true;\\n    private boolean externalControllerActive = false;\\n")
+          once("import android.view.KeyEvent;\n", "import android.view.KeyEvent;\nimport android.view.InputDevice;\n")
+          once("    private boolean showTouchscreenControls = true;\n", "    private boolean showTouchscreenControls = true;\n    private boolean externalControllerActive = false;\n")
           once("            if (showTouchscreenControls) for (ControlElement element : elements) element.draw(canvas);", """            externalControllerActive = hasExternalControllerConnected();
                       if (showTouchscreenControls) for (ControlElement element : elements) {
                           if (!externalControllerActive || !isMovementControl(element)) element.draw(canvas);
@@ -70,11 +70,11 @@ jobs:
                   mouseMoveOffset.y = Math.abs(state.thumbRY) > ControlElement.STICK_DEAD_ZONE ? state.thumbRY : 0;
                   if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) createMouseMoveTimer();
                   invalidate();""")
-          once("                    for (ControlElement element : profile.getElements()) {\\n                        if (element.handleTouchDown(pointerId, x, y)) handled = true;", """                    externalControllerActive = hasExternalControllerConnected();
+          once("                    for (ControlElement element : profile.getElements()) {\n                        if (element.handleTouchDown(pointerId, x, y)) handled = true;", """                    externalControllerActive = hasExternalControllerConnected();
                               for (ControlElement element : profile.getElements()) {
                                   if (externalControllerActive && isMovementControl(element)) continue;
                                   if (element.handleTouchDown(pointerId, x, y)) handled = true;""")
-          once("                        for (ControlElement element : profile.getElements()) {\\n                            if (element.handleTouchMove(movePointerId, x, y)) handled = true;", """                        externalControllerActive = hasExternalControllerConnected();
+          once("                        for (ControlElement element : profile.getElements()) {\n                            if (element.handleTouchMove(movePointerId, x, y)) handled = true;", """                        externalControllerActive = hasExternalControllerConnected();
                                   for (ControlElement element : profile.getElements()) {
                                       if (externalControllerActive && isMovementControl(element)) continue;
                                       if (element.handleTouchMove(movePointerId, x, y)) handled = true;""")
@@ -97,8 +97,8 @@ jobs:
               if old not in s:
                   raise SystemExit("Expected activity section not found: " + old[:100])
               s = s.replace(old, new, 1)
-          once("import android.view.KeyEvent;\\n", "import android.view.KeyEvent;\\nimport android.view.Gravity;\\n")
-          once("import android.widget.ArrayAdapter;\\n", "import android.widget.ArrayAdapter;\\nimport android.widget.Button;\\n")
+          once("import android.view.KeyEvent;\n", "import android.view.KeyEvent;\nimport android.view.Gravity;\n")
+          once("import android.widget.ArrayAdapter;\n", "import android.widget.ArrayAdapter;\nimport android.widget.Button;\n")
           once("""        rootView.addView(inputControlsView);
 
                   if (container != null""", """        rootView.addView(inputControlsView);
@@ -128,7 +128,7 @@ jobs:
           import re
           p = Path("app/src/main/java/com/winlator/widget/InputControlsView.java")
           s = p.read_text()
-          pattern = r"    private boolean hasExternalControllerConnected\\(\\) \\{.*?^    \\}"
+          pattern = r"    private boolean hasExternalControllerConnected\(\) \{.*?^    \}"
           replacement = """    private boolean hasExternalControllerConnected() {
                   if (profile == null) return false;
                   for (int deviceId : InputDevice.getDeviceIds()) {
@@ -149,8 +149,8 @@ jobs:
           from pathlib import Path
           p = Path("app/src/main/java/com/winlator/contentdialog/AboutDialog.java")
           s = p.read_text()
-          old = '            String creditsAndThirdPartyAppsHTML = String.join("<br />",\\n'
-          new = '            String creditsAndThirdPartyAppsHTML = String.join("<br />",\\n                "Made and designed by Madhuranga Yasanath",\\n'
+          old = '            String creditsAndThirdPartyAppsHTML = String.join("<br />",\n'
+          new = '            String creditsAndThirdPartyAppsHTML = String.join("<br />",\n                "Made and designed by Madhuranga Yasanath",\n'
           if old not in s:
               raise SystemExit("About dialog credits section not found")
           p.write_text(s.replace(old, new, 1))
