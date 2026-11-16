@@ -200,6 +200,80 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     }
   }
 
+  Future<void> _exportProfiles() async {
+    if (_profiles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('There are no saved realms to export.')),
+      );
+      return;
+    }
+    try {
+      final bytes = Uint8List.fromList(
+        utf8.encode(ServerProfile.encodeProfiles(_profiles)),
+      );
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'Export Azeroth Mobile realm backup',
+        fileName: 'azeroth-realms-backup.json',
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: bytes,
+      );
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Realm backup exported.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $error')),
+      );
+    }
+  }
+
+  Future<void> _importProfiles() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final bytes = result.files.single.bytes;
+      if (bytes == null) {
+        throw const FormatException('Could not read the selected backup file.');
+      }
+      final imported = ServerProfile.decodeProfiles(utf8.decode(bytes));
+      if (imported.isEmpty) {
+        throw const FormatException('The backup contains no server profiles.');
+      }
+
+      final merged = [..._profiles];
+      final existing = merged.map((profile) => profile.key).toSet();
+      var added = 0;
+      for (final profile in imported) {
+        if (existing.add(profile.key)) {
+          merged.add(profile);
+          added++;
+        }
+      }
+      setState(() => _profiles = merged);
+      await _saveProfiles();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(
+          added == 0
+              ? 'All imported realms already exist.'
+              : 'Imported $added realm(s). Existing realms were kept.',
+        )),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import failed: $error')),
+      );
+    }
+  }
+
   Future<void> _saveProfiles() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -350,6 +424,26 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
           ),
           const SizedBox(height: 14),
           const Divider(color: Color(0xFF293448)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _importProfiles,
+                  icon: const Icon(Icons.file_download_outlined, size: 18),
+                  label: const Text('IMPORT'),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _exportProfiles,
+                  icon: const Icon(Icons.file_upload_outlined, size: 18),
+                  label: const Text('EXPORT'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           if (_loading)
             const Center(
                 child: Padding(
