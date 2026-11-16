@@ -481,16 +481,22 @@ class _LauncherPageState extends State<LauncherPage> {
   }
 
   void _jumpToSection(int index, GlobalKey key) {
+    if (!mounted) return;
     setState(() => selectedNavTab = index);
-    final target = key.currentContext;
-    if (target != null) {
+    // Resolve the section after the tab's tap frame so Android can finish
+    // dispatching the pointer event before the scroll animation begins.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageScrollController.hasClients) return;
+      final target = key.currentContext;
+      if (target == null) return;
       Scrollable.ensureVisible(
         target,
-        duration: const Duration(milliseconds: 520),
+        duration: const Duration(milliseconds: 650),
         curve: Curves.easeInOutCubic,
-        alignment: .035,
+        alignment: .02,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
       );
-    }
+    });
   }
 
   // Keep the top navigation highlight synchronized when the user scrolls manually.
