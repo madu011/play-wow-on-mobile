@@ -45,13 +45,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install pinned Android build tools
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
+          SDKMANAGER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          if [ -z "$SDKMANAGER" ]; then echo 'sdkmanager was not found on the GitHub runner' >&2; exit 1; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
 
       - name: Build upstream native runtime APK
         working-directory: vendor/wow-mobile-engine
