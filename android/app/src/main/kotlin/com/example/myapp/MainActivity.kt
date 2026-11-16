@@ -8,6 +8,12 @@ import android.content.Context
 import android.os.Build
 import android.util.DisplayMetrics
 import android.view.WindowManager
+import android.opengl.EGL14
+import android.opengl.EGLConfig
+import android.opengl.EGLContext
+import android.opengl.EGLDisplay
+import android.opengl.EGLSurface
+import android.opengl.GLES20
 import android.provider.DocumentsContract
 import android.database.Cursor
 import io.flutter.embedding.android.FlutterActivity
@@ -87,10 +93,14 @@ class MainActivity : FlutterActivity() {
         @Suppress("DEPRECATION")
         (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
         val packageManager = packageManager
-        val hasVulkan = packageManager.hasSystemFeature("android.hardware.vulkan.level") ||
-            packageManager.hasSystemFeature("android.hardware.vulkan.version")
-        val gles = packageManager.getSystemAvailableFeatures()
-            .firstOrNull { it.name == null }?.reqGlEsVersion ?: 0
+        val features = packageManager.getSystemAvailableFeatures()
+        val gles = features.firstOrNull { it.name == null }?.reqGlEsVersion ?: 0
+        val vulkanVersionRaw = features.firstOrNull { it.name == "android.hardware.vulkan.version" }?.version ?: 0
+        val vulkanLevel = features.firstOrNull { it.name == "android.hardware.vulkan.level" }?.version ?: 0
+        val glInfo = readGlInfo()
+        val vulkanVersion = if (vulkanVersionRaw > 0) {
+            "${vulkanVersionRaw shr 22}.${(vulkanVersionRaw shr 12) and 0x3ff}.${vulkanVersionRaw and 0xfff}"
+        } else "Not reported by Android"
         return mapOf(
             "manufacturer" to Build.MANUFACTURER,
             "brand" to Build.BRAND,
@@ -104,8 +114,59 @@ class MainActivity : FlutterActivity() {
             "availableRamMb" to (memory.availMem / (1024L * 1024L)).toInt(),
             "screenResolution" to "${metrics.widthPixels} × ${metrics.heightPixels}",
             "densityDpi" to metrics.densityDpi,
-            "graphicsApi" to if (hasVulkan) "Vulkan feature + OpenGL ES ${gles.toString(16)}" else "OpenGL ES ${gles.toString(16)} (Vulkan not reported)"
+            "graphicsApi" to "OpenGL ES feature 0x${gles.toString(16)}",
+            "gpuVendor" to (glInfo["vendor"] ?: "Unavailable"),
+            "gpuRenderer" to (glInfo["renderer"] ?: "Unavailable"),
+            "openGlVersion" to (glInfo["version"] ?: "Unavailable"),
+            "vulkanVersion" to vulkanVersion,
+            "vulkanLevel" to if (vulkanLevel > 0) vulkanLevel.toString() else "Not reported by Android"
         )
+    }
+
+    private fun readGlInfo(): Map<String, String> {
+        var display: EGLDisplay = EGL14.EGL_NO_DISPLAY
+        var surface: EGLSurface = EGL14.EGL_NO_SURFACE
+        var context: EGLContext = EGL14.EGL_NO_CONTEXT
+        try {
+            display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
+            if (display == EGL14.EGL_NO_DISPLAY) return emptyMap()
+            val versions = IntArray(2)
+            if (!EGL14.eglInitialize(display, versions, 0, versions, 1)) return emptyMap()
+            val configAttrs = intArrayOf(
+                EGL14.EGL_RENDERABLE_TYPE, 4,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_PBUFFER_BIT,
+                EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8, EGL14.EGL_NONE
+            )
+            val configs = arrayOfNulls<EGLConfig>(1)
+            val count = IntArray(1)
+            if (!EGL14.eglChooseConfig(display, configAttrs, 0, configs, 0, 1, count, 0) || count[0] == 0) return emptyMap()
+            val config = configs[0] ?: return emptyMap()
+            surface = EGL14.eglCreatePbufferSurface(display, config,
+                intArrayOf(EGL14.EGL_WIDTH, 1, EGL14.EGL_HEIGHT, 1, EGL14.EGL_NONE), 0)
+            if (surface == EGL14.EGL_NO_SURFACE) return emptyMap()
+            context = EGL14.eglCreateContext(display, config, EGL14.EGL_NO_CONTEXT,
+                intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE), 0)
+            if (context == EGL14.EGL_NO_CONTEXT) return emptyMap()
+            if (!EGL14.eglMakeCurrent(display, surface, surface, context)) return emptyMap()
+            val vendor = GLES20.glGetString(GLES20.GL_VENDOR)
+            val renderer = GLES20.glGetString(GLES20.GL_RENDERER)
+            val version = GLES20.glGetString(GLES20.GL_VERSION)
+            return mapOf(
+                "vendor" to (vendor ?: "Unknown"),
+                "renderer" to (renderer ?: "Unknown"),
+                "version" to (version ?: "Unknown")
+            )
+        } catch (_: Exception) {
+            return emptyMap()
+        } finally {
+            if (display != EGL14.EGL_NO_DISPLAY) {
+                EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
+                if (surface != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(display, surface)
+                if (context != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(display, context)
+                EGL14.eglTerminate(display)
+            }
+        }
     }
 
     private data class Entry(val uri: Uri, val name: String, val mime: String, val size: Long)
