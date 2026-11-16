@@ -63,8 +63,9 @@ class MainActivity : FlutterActivity() {
                     "writeRealmlist" -> {
                         val uri = call.argument<String>("treeUri")
                         val content = call.argument<String>("content") ?: ""
+                        val localeName = call.argument<String>("localeName")
                         if (uri.isNullOrBlank()) result.error("NO_TREE", "Game folder access is missing.", null)
-                        else try { result.success(writeRealm(Uri.parse(uri), content)) }
+                        else try { result.success(writeRealm(Uri.parse(uri), content, localeName)) }
                         catch (e: Exception) { result.error("WRITE_FAILED", e.message, null) }
                     }
                     else -> result.notImplemented()
@@ -152,16 +153,26 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun writeRealm(tree: Uri, content: String): Boolean {
+    private fun writeRealm(tree: Uri, content: String, requestedLocale: String?): Boolean {
         val rootId = DocumentsContract.getTreeDocumentId(tree)
         val rootUri = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
         val data = children(rootUri).firstOrNull {
             it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR
         } ?: return false
-        val locale = children(data.uri).firstOrNull {
+        val localeFolders = children(data.uri).filter {
             it.mime == DocumentsContract.Document.MIME_TYPE_DIR &&
-                it.name.length == 4 && it.name.substring(2).all { c -> c.isUpperCase() }
-        } ?: return false
+                it.name.length == 4 &&
+                it.name.substring(0, 2).all { c -> c.isLetter() && c.isLowerCase() } &&
+                it.name.substring(2).all { c -> c.isLetter() && c.isUpperCase() }
+        }
+        if (localeFolders.isEmpty()) return false
+        val locale = if (requestedLocale.isNullOrBlank()) {
+            if (localeFolders.size != 1) throw IllegalStateException("Multiple locale folders found. Select the game language folder first.")
+            localeFolders.first()
+        } else {
+            localeFolders.firstOrNull { it.name == requestedLocale }
+                ?: throw IllegalArgumentException("Selected locale folder was not found in Data/.")
+        }
         val existing = children(locale.uri).firstOrNull { it.name.equals("realmlist.wtf", true) }
         val target = if (existing != null) existing.uri else {
             DocumentsContract.createDocument(contentResolver, locale.uri, "text/plain", "realmlist.wtf")
