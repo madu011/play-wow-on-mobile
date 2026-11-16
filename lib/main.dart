@@ -663,18 +663,38 @@ class _LauncherPageState extends State<LauncherPage> {
                   const SizedBox(height: 14),
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
-                    icon: const Icon(Icons.drive_folder_upload),
-                    label: const Text('LINK ORIGINAL WOW GAME FOLDER'),
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('GRANT READ / WRITE ACCESS'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
                       side: const BorderSide(color: gold),
                       minimumSize: const Size.fromHeight(46),
                     ),
                   ),
+                  const SizedBox(height: 9),
+                  OutlinedButton.icon(
+                    onPressed: gameTreeUri == null ? null : () async {
+                      await _refreshGameLocales();
+                      if (!mounted) return;
+                      showInfo(
+                        gameLocales.isNotEmpty ? 'GAME FILES DETECTED' : 'GAME FILE SCAN',
+                        gameLocales.isNotEmpty
+                          ? 'Found locale folder(s): ${gameLocales.join(', ')}. The original game folder remains in place; no files were copied.'
+                          : 'No standard locale folder was detected through the saved Android folder permission. Re-grant access to the main WoW folder containing Wow.exe and Data/.',
+                      );
+                    },
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('VERIFY GAME FILE ACCESS'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gold,
+                      side: const BorderSide(color: gold),
+                      minimumSize: const Size.fromHeight(44),
+                    ),
+                  ),
                   Text(
                     gameTreeUri == null
-                        ? 'Select the original folder containing Wow.exe and Data/. WOW LK will validate and link it directly — no duplicate copy or extra storage.'
-                        : 'Original game folder is linked. Game files remain in their current location.',
+                        ? 'Grant Android read/write access, then select the original folder containing Wow.exe and Data/. No game files are copied.'
+                        : 'Folder permission is saved. Verify the detected files before applying a realm. Game files remain in their original location.',
                     style: const TextStyle(color: muted, fontSize: 10),
                   ),
                 ],

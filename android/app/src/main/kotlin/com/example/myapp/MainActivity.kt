@@ -214,7 +214,12 @@ class MainActivity : FlutterActivity() {
                     if (entry.mime == DocumentsContract.Document.MIME_TYPE_DIR) {
                         if (prefix.isEmpty() && entry.name.length == 4 && entry.name.substring(0,2).all { it.isLetter() && it.isLowerCase() } &&
                             entry.name.substring(2).all { it.isLetter() } && entry.name.substring(2).all { it.isUpperCase() }) {
-                            locales.add(entry.name)
+                            // Keep the locale directory visible even when a document provider
+                            // reports an unknown archive size; file presence is the key check.
+                            val localeFiles = children(entry.uri)
+                            if (localeFiles.any { it.name.equals("locale.MPQ", true) && it.mime != DocumentsContract.Document.MIME_TYPE_DIR }) {
+                                locales.add(entry.name)
+                            }
                         }
                         walk(entry.uri, relative, depth + 1)
                     } else {
