@@ -42,3 +42,8 @@ The full upstream native Android engine is now pinned as a Git submodule on this
 ## Native engine CI build
 
 A dedicated GitHub Actions workflow now checks out the pinned submodule recursively, verifies the exact upstream commit, installs JDK 17 / Android SDK 34 / NDK 24.0.8215888 / CMake 3.22.1, and runs the upstream `assembleRelease` task. The output is uploaded as an unsigned CI artifact for build verification. This workflow builds the upstream engine as-is; it does not yet produce a branded WOW LK integrated app.
+
+
+## First native launcher branding pass
+
+A repeatable script (`scripts/apply-wowlk-branding.py`) now patches the upstream native launcher's app name and subtitle to WOW LK and applies a midnight-blue / restrained gold theme palette to the native dark theme before CI builds the APK. The upstream submodule remains pinned and unmodified in Git; the patch is applied in the CI checkout. This is an initial palette/string pass only: the launcher layout, app icon and full Icecrown artwork are not yet ported.
