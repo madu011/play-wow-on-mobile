@@ -173,3 +173,9 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Added native cancellation via the importer's existing cancellation flag. Cancelling stops the copy at the next file-buffer boundary and the staged temporary import is cleaned up; the existing imported game remains preserved.
 - Added a native method to return the app-owned imported game path after relaunch, so the Flutter game-folder inspector receives the actual imported filesystem path instead of a placeholder label.
 - The updated APK must pass CI build and signature verification before being offered for device testing. Device testing remains necessary for real SAF providers, import progress, cancellation, and launch.
+
+
+## 2026-11-16 import progress estimate accuracy
+- Corrected the import-size preflight and progress denominator to recursively inspect nested files instead of adding only root-level file sizes.
+- When a SAF provider does not expose a size for every file, the UI now receives an unknown total and uses an indeterminate progress bar rather than showing a misleading percentage.
+- This does not replace runtime storage checks; Android may still report insufficient space during a copy if provider metadata is incomplete.

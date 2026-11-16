@@ -44,16 +44,20 @@ public final class WowGameFolderImporter {
             if (cursor == null) throw new IOException("The selected folder cannot be read.");
             int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
             int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
-            int sizeCol = cursor.getColumnIndex(OpenableColumns.SIZE);
-            while (cursor.moveToNext()) {
+                while (cursor.moveToNext()) {
                 String name = cursor.getString(nameCol);
                 String mime = cursor.getString(mimeCol);
                 if ("Wow.exe".equalsIgnoreCase(name) && !DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) hasExe = true;
                 if ("Data".equalsIgnoreCase(name) && DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) hasData = true;
-                if (sizeCol >= 0 && !cursor.isNull(sizeCol)) totalBytes += Math.max(0L, cursor.getLong(sizeCol));
             }
         }
         if (!hasExe || !hasData) throw new IOException("Select the main WoW folder containing Wow.exe and Data/.");
+
+        // SAF providers often report a directory's size as zero. Walk all descendants
+        // and use a determinate percentage only when every file exposes a size.
+        long[] estimatedBytes = new long[]{0L};
+        boolean completeEstimate = estimateDirectorySize(resolver, treeUri, rootId, estimatedBytes);
+        if (completeEstimate) totalBytes = estimatedBytes[0];
 
         File base = context.getExternalFilesDir("wow-client");
         if (base == null) base = new File(context.getFilesDir(), "wow-client");
@@ -87,6 +91,28 @@ public final class WowGameFolderImporter {
             deleteRecursively(temp);
             throw error;
         }
+    }
+
+    private static boolean estimateDirectorySize(ContentResolver resolver, Uri treeUri,
+                                                  String parentId, long[] totalBytes) throws IOException {
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId);
+        try (Cursor cursor = resolver.query(childrenUri, CHILD_COLUMNS, null, null, null)) {
+            if (cursor == null) throw new IOException("Cannot estimate the selected game folder size.");
+            int idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            int sizeCol = cursor.getColumnIndex(OpenableColumns.SIZE);
+            while (cursor.moveToNext()) {
+                String id = cursor.getString(idCol);
+                String mime = cursor.getString(mimeCol);
+                if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                    if (!estimateDirectorySize(resolver, treeUri, id, totalBytes)) return false;
+                } else {
+                    if (sizeCol < 0 || cursor.isNull(sizeCol)) return false;
+                    totalBytes[0] += Math.max(0L, cursor.getLong(sizeCol));
+                }
+            }
+        }
+        return true;
     }
 
     private static void copyDirectory(Context context, Uri treeUri, String parentId, File target,
