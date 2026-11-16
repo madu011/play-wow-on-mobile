@@ -48,6 +48,7 @@ class _LauncherPageState extends State<LauncherPage> {
   bool lowGraphics = true;
   bool showTouchControls = true;
   bool automaticGraphics = true;
+  String graphicsPreset = 'Auto';
   String? gameTreeUri;
   List<String> gameLocales = [];
   String? selectedLocale;
@@ -72,6 +73,7 @@ class _LauncherPageState extends State<LauncherPage> {
       if (!mounted) return;
       setState(() {
         automaticGraphics = prefs.getBool('automatic_graphics') ?? true;
+        graphicsPreset = prefs.getString('graphics_preset') ?? 'Auto';
         lowGraphics = prefs.getBool('low_graphics') ?? true;
         showTouchControls = prefs.getBool('show_touch_controls') ?? true;
       });
@@ -84,6 +86,7 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('automatic_graphics', automaticGraphics);
+      await prefs.setString('graphics_preset', graphicsPreset);
       await prefs.setBool('low_graphics', lowGraphics);
       await prefs.setBool('show_touch_controls', showTouchControls);
     } catch (_) {
@@ -192,6 +195,27 @@ class _LauncherPageState extends State<LauncherPage> {
       'effects': 'Disable or minimize shadows and effects',
       'frameRate': 'Stable 25–30 FPS target',
     };
+  }
+
+  String _effectiveGraphicsPreset() {
+    if (automaticGraphics || graphicsPreset == 'Auto') {
+      final score = int.tryParse((_devicePerformanceEstimate(deviceInfo)['score'] ?? '').split('/').first) ?? 0;
+      return score >= 82 ? 'Medium' : score >= 62 ? 'Low–Medium' : 'Low';
+    }
+    return graphicsPreset;
+  }
+
+  Map<String, String> _graphicsPresetDetails() {
+    switch (_effectiveGraphicsPreset()) {
+      case 'High':
+        return {'Resolution': '100%', 'Effects': 'Medium; test one effect at a time', 'Shadows': 'Low–Medium'};
+      case 'Medium':
+        return {'Resolution': '90–100%', 'Effects': 'Medium', 'Shadows': 'Low'};
+      case 'Low–Medium':
+        return {'Resolution': '75–85%', 'Effects': 'Low', 'Shadows': 'Off / Low'};
+      default:
+        return {'Resolution': '65–75%', 'Effects': 'Low / Minimum', 'Shadows': 'Off'};
+    }
   }
 
   String _recommendedGraphicsProfile(Map<String, dynamic> info) {
@@ -497,7 +521,61 @@ class _LauncherPageState extends State<LauncherPage> {
             Container(key: _toolsSectionKey, child: _sectionTitle('PERFORMANCE & CONTROLS')),
             _panel(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(children: [
+                    const Icon(Icons.tune, color: gold),
+                    const SizedBox(width: 9),
+                    const Expanded(child: Text('GRAPHICS CONFIGURATION',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    _status(automaticGraphics ? 'AUTO' : 'MANUAL',
+                        automaticGraphics ? Colors.greenAccent : Colors.orangeAccent),
+                  ]),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: graphicsPreset,
+                    decoration: const InputDecoration(
+                      labelText: 'Graphics preset',
+                      helperText: 'Starting recommendation only; not applied to WoW yet',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Auto', child: Text('Automatic recommendation')),
+                      DropdownMenuItem(value: 'Low', child: Text('Low')),
+                      DropdownMenuItem(value: 'Low–Medium', child: Text('Low–Medium')),
+                      DropdownMenuItem(value: 'Medium', child: Text('Medium')),
+                      DropdownMenuItem(value: 'High', child: Text('High')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        graphicsPreset = value;
+                        automaticGraphics = value == 'Auto';
+                        if (value != 'Auto') lowGraphics = value == 'Low' || value == 'Low–Medium';
+                        else {
+                          final score = int.tryParse((_devicePerformanceEstimate(deviceInfo)['score'] ?? '').split('/').first) ?? 0;
+                          lowGraphics = score < 82;
+                        }
+                      });
+                      _savePerformanceSettings();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  for (final entry in _graphicsPresetDetails().entries)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(children: [
+                        SizedBox(width: 92, child: Text(entry.key.toUpperCase(),
+                            style: const TextStyle(color: muted, fontSize: 10))),
+                        Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 12))),
+                      ]),
+                    ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Values are suggested starting points. They will not affect the game until a compatible runtime is integrated.',
+                    style: TextStyle(color: muted, fontSize: 10),
+                  ),
+                  const Divider(color: Color(0xFF293448)),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: gold,
@@ -508,9 +586,9 @@ class _LauncherPageState extends State<LauncherPage> {
                     onChanged: (v) {
                       setState(() {
                         automaticGraphics = v;
+                        graphicsPreset = v ? 'Auto' : 'Low';
                         if (v && deviceScanComplete) {
-                          final estimate = _devicePerformanceEstimate(deviceInfo);
-                          final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+                          final score = int.tryParse((_devicePerformanceEstimate(deviceInfo)['score'] ?? '').split('/').first) ?? 0;
                           lowGraphics = score < 82;
                         }
                       });
@@ -523,14 +601,15 @@ class _LauncherPageState extends State<LauncherPage> {
                     activeThumbColor: gold,
                     title: const Text('Low graphics mode'),
                     subtitle: Text(
-                      automaticGraphics
-                          ? 'Controlled by automatic profile; turn it off to edit manually'
-                          : 'Manual override enabled',
+                      automaticGraphics ? 'Controlled by automatic profile' : 'Manual override enabled',
                       style: const TextStyle(color: muted, fontSize: 11),
                     ),
                     value: lowGraphics,
                     onChanged: automaticGraphics ? null : (v) {
-                      setState(() => lowGraphics = v);
+                      setState(() {
+                        lowGraphics = v;
+                        graphicsPreset = v ? 'Low' : 'Medium';
+                      });
                       _savePerformanceSettings();
                     },
                   ),
@@ -553,9 +632,9 @@ class _LauncherPageState extends State<LauncherPage> {
                       onPressed: () {
                         setState(() {
                           automaticGraphics = true;
+                          graphicsPreset = 'Auto';
                           if (deviceScanComplete) {
-                            final estimate = _devicePerformanceEstimate(deviceInfo);
-                            final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+                            final score = int.tryParse((_devicePerformanceEstimate(deviceInfo)['score'] ?? '').split('/').first) ?? 0;
                             lowGraphics = score < 82;
                           }
                           showTouchControls = true;
