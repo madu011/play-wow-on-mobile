@@ -79,6 +79,9 @@ jobs:
       - name: Apply hardware detection and Winlator auto-tuning
         run: python3 scripts/apply-native-auto-tuning.py
 
+      - name: Install icon image tooling
+        run: python3 -m pip install --disable-pip-version-check Pillow
+
       - name: Apply WOW LK launcher branding
         run: python3 scripts/apply-wowlk-branding.py
 
