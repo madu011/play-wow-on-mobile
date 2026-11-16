@@ -12,9 +12,9 @@ def replace_once(path: Path, old: str, new: str) -> None:
     if new in text and old not in text:
         return
     count = text.count(old)
-    if count != 1:
-        raise SystemExit(f"Expected exactly one occurrence of {old!r} in {path}, found {count}")
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    if count == 0:
+        raise SystemExit(f"Expected at least one occurrence of {old!r} in {path}")
+    path.write_text(text.replace(old, new), encoding="utf-8")
 
 
 replace_once(STRINGS, '<string name="app_name">WoW Mobile</string>', '<string name="app_name">WOW LK</string>')
