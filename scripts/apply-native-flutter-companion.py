@@ -284,7 +284,8 @@ public class WowLKCompanionActivity extends FlutterActivity {
             }
             if (name.equalsIgnoreCase("Wow.exe") || name.equalsIgnoreCase("Wow-64.exe")) detected.add(name);
         }
-        if (dataFolder == null) throw new IllegalStateException("The selected folder is readable, but its Data/ folder was not listed. Select the main folder containing Wow.exe, not the Data folder itself.");
+        if (dataFolder == null) throw new IllegalStateException("The selected folder is accessible, but Data/ was not found. Select the main WoW folder containing Wow.exe and Data/.");
+        if (!executable) throw new IllegalStateException("Data/ was found, but Wow.exe / Wow-64.exe was not listed at the selected folder root. Select the main WoW folder, not a parent or Data subfolder.");
         int archiveCount = 0;
         long totalBytes = 0;
         java.util.HashSet<String> coreFound = new java.util.HashSet<>();
@@ -368,9 +369,11 @@ public class WowLKCompanionActivity extends FlutterActivity {
             while (c.moveToNext()) {
                 String name = c.getString(nameCol);
                 String mime = c.getString(mimeCol);
+                boolean looksLikeKnownDirectory = name.equalsIgnoreCase("Data") ||
+                    name.equalsIgnoreCase("WTF") || name.matches("[A-Za-z]{2}[A-Za-z]{2}");
                 boolean directory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ||
-                    mime == null || mime.isEmpty() || "application/octet-stream".equals(mime) &&
-                    (name.equalsIgnoreCase("Data") || name.equalsIgnoreCase("WTF") || name.matches("[A-Za-z]{2}[A-Za-z]{2}"));
+                    (looksLikeKnownDirectory && (mime == null || mime.isEmpty() ||
+                     "application/octet-stream".equals(mime)));
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", c.getString(idCol));
                 item.put("name", name == null ? "" : name);
