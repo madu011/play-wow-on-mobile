@@ -26,6 +26,15 @@ void main() {
     );
     await File('${locale.path}/locale-enUS.MPQ').writeAsString('test');
     await File('${locale.path}/patch-enUS.MPQ').writeAsString('test');
+    await File('${temporaryDirectory.path}/Data/common.MPQ')
+        .writeAsString('core');
+    await File('${temporaryDirectory.path}/Data/common-2.MPQ')
+        .writeAsString('core2');
+    await File('${temporaryDirectory.path}/Data/expansion.MPQ')
+        .writeAsString('expansion');
+    await File('${temporaryDirectory.path}/Data/lichking.MPQ')
+        .writeAsString('lichking');
+    await File('${locale.path}/empty.MPQ').writeAsBytes([]);
 
     final report = await GameFolderReport.inspect(temporaryDirectory.path);
 
@@ -34,7 +43,11 @@ void main() {
     expect(report.dataFolderFound, isTrue);
     expect(report.localeFolders, contains('enUS'));
     expect(report.realmlistFiles, contains('enUS/realmlist.wtf'));
-    expect(report.archiveCount, 2);
+    expect(report.archiveCount, 7);
+    expect(report.dataArchiveCount, 7);
+    expect(report.emptyArchiveFiles, contains('enUS/empty.MPQ'));
+    expect(report.missingCoreArchives, isEmpty);
+    expect(report.totalArchiveBytes, greaterThan(0));
   });
 
   test('reports missing game files and folders', () async {
