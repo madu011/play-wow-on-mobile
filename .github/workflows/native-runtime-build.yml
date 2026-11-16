@@ -57,7 +57,7 @@ jobs:
       - name: Apply native SAF game-folder importer
         run: python3 scripts/apply-native-game-import.py
 
-      - name: Build WOW LK branded native runtime APK
+      - name: Apply WOW LK disconnect diagnostics\n        run: python3 scripts/apply-native-diagnostics.py\n\n      - name: Build WOW LK branded native runtime APK
         working-directory: vendor/wow-mobile-engine
         run: |
           chmod +x gradlew
