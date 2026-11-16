@@ -41,7 +41,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Graphics preset'), findsOneWidget);
-    expect(find.text('Graphics preset'), findsOneWidget);
   });
 
 
