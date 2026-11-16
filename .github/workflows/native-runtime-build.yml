@@ -51,7 +51,10 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
 
-      - name: Build upstream native runtime APK
+      - name: Apply WOW LK launcher branding
+        run: python3 scripts/apply-wowlk-branding.py
+
+      - name: Build WOW LK branded native runtime APK
         working-directory: vendor/wow-mobile-engine
         run: |
           chmod +x gradlew
