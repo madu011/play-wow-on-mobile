@@ -196,16 +196,22 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
         '${widget.folderPath}/Data',
         cancellation: cancellation,
         onProgress: (progress) {
-          if (mounted) setState(() => _scanProgress = progress);
+          if (mounted && identical(_scanCancellation, cancellation)) {
+            setState(() => _scanProgress = progress);
+          }
         },
       );
     });
     _checksumFuture!.then<void>(
       (_) {
-        if (mounted) setState(() => _isChecksumScanning = false);
+        if (mounted && identical(_scanCancellation, cancellation)) {
+          setState(() => _isChecksumScanning = false);
+        }
       },
       onError: (Object error, StackTrace stackTrace) {
-        if (mounted) setState(() => _isChecksumScanning = false);
+        if (mounted && identical(_scanCancellation, cancellation)) {
+          setState(() => _isChecksumScanning = false);
+        }
       },
     );
   }
