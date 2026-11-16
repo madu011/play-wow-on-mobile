@@ -429,6 +429,11 @@ class _LauncherPageState extends State<LauncherPage> {
       ('CPU', info['cpuCores'] == null ? 'Detecting' : '${info['cpuCores']} cores'),
       ('RAM', ram),
       ('Architecture', (info['supportedAbis'] as List?)?.join(', ') ?? 'Detecting'),
+      ('GPU Vendor', info['gpuVendor']?.toString() ?? 'Detecting'),
+      ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
+      ('OpenGL ES', info['openGlVersion']?.toString() ?? 'Checking…'),
+      ('Vulkan API', info['vulkanVersion']?.toString() ?? 'Checking…'),
+      ('Vulkan Level', info['vulkanLevel']?.toString() ?? 'Checking…'),
       ('Graphics API', info['graphicsApi']?.toString() ?? 'Checking support…'),
       ('Screen', info['screenResolution']?.toString() ?? 'Detecting'),
     ];
