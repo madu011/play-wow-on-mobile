@@ -18,6 +18,7 @@ class MpqScanHistoryEntry {
     required this.errorCount,
     required this.totalBytes,
     required this.cancelled,
+    this.fingerprints = const [],
   });
 
   final DateTime scannedAt;
@@ -28,6 +29,7 @@ class MpqScanHistoryEntry {
   final int errorCount;
   final int totalBytes;
   final bool cancelled;
+  final List<MpqFingerprint> fingerprints;
 
   factory MpqScanHistoryEntry.fromReport(MpqFingerprintReport report) =>
       MpqScanHistoryEntry(
@@ -39,6 +41,7 @@ class MpqScanHistoryEntry {
         errorCount: report.errorCount,
         totalBytes: report.totalBytes,
         cancelled: report.cancelled,
+        fingerprints: report.files,
       );
 
   factory MpqScanHistoryEntry.fromJson(Map<String, dynamic> json) {
@@ -51,6 +54,15 @@ class MpqScanHistoryEntry {
       errorCount: json['errorCount'] as int,
       totalBytes: json['totalBytes'] as int,
       cancelled: json['cancelled'] as bool,
+      fingerprints: (json['fingerprints'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map((item) => MpqFingerprint(
+                relativePath: item['relativePath'] as String,
+                sizeBytes: item['sizeBytes'] as int,
+                sha256: item['sha256'] as String?,
+                error: item['error'] as String?,
+              ))
+          .toList(growable: false),
     );
   }
 
@@ -63,9 +75,81 @@ class MpqScanHistoryEntry {
         'errorCount': errorCount,
         'totalBytes': totalBytes,
         'cancelled': cancelled,
+        'fingerprints': fingerprints
+            .map((file) => {
+                  'relativePath': file.relativePath,
+                  'sizeBytes': file.sizeBytes,
+                  'sha256': file.sha256,
+                  'error': file.error,
+                })
+            .toList(),
       };
 
   String get id => scannedAt.microsecondsSinceEpoch.toString();
+}
+
+enum MpqFileChangeType { unchanged, changed, added, missing, unreadable }
+
+class MpqFileChange {
+  const MpqFileChange({
+    required this.path,
+    required this.type,
+    this.previous,
+    this.latest,
+  });
+
+  final String path;
+  final MpqFileChangeType type;
+  final MpqFingerprint? previous;
+  final MpqFingerprint? latest;
+}
+
+class MpqDetailedComparison {
+  const MpqDetailedComparison({
+    required this.changes,
+  });
+
+  final List<MpqFileChange> changes;
+
+  int count(MpqFileChangeType type) =>
+      changes.where((change) => change.type == type).length;
+
+  factory MpqDetailedComparison.between(
+    MpqScanHistoryEntry latest,
+    MpqScanHistoryEntry previous,
+  ) {
+    final oldFiles = {for (final file in previous.fingerprints) file.relativePath: file};
+    final newFiles = {for (final file in latest.fingerprints) file.relativePath: file};
+    final paths = {...oldFiles.keys, ...newFiles.keys}.toList()..sort();
+    final changes = <MpqFileChange>[];
+
+    for (final path in paths) {
+      final oldFile = oldFiles[path];
+      final newFile = newFiles[path];
+      MpqFileChangeType type;
+      if (oldFile == null) {
+        type = newFile!.succeeded
+            ? MpqFileChangeType.added
+            : MpqFileChangeType.unreadable;
+      } else if (newFile == null) {
+        type = MpqFileChangeType.missing;
+      } else if (!oldFile.succeeded || !newFile.succeeded) {
+        type = MpqFileChangeType.unreadable;
+      } else if (oldFile.sha256 != newFile.sha256 ||
+          oldFile.sizeBytes != newFile.sizeBytes) {
+        type = MpqFileChangeType.changed;
+      } else {
+        type = MpqFileChangeType.unchanged;
+      }
+      changes.add(MpqFileChange(
+        path: path,
+        type: type,
+        previous: oldFile,
+        latest: newFile,
+      ));
+    }
+    return MpqDetailedComparison(changes: changes);
+  }
 }
 
 class MpqScanComparison {
@@ -107,6 +191,7 @@ class MpqScanHistory extends StatefulWidget {
 
 class _MpqScanHistoryState extends State<MpqScanHistory> {
   static const _maxEntries = 20;
+  static const _maxDetailedSnapshots = 5;
   static const _gold = Color(0xFFE2B45D);
   static const _muted = Color(0xFF9AA8BC);
 
@@ -161,6 +246,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       if (loaded.length > _maxEntries) {
         loaded.removeRange(_maxEntries, loaded.length);
       }
+      _trimDetailedSnapshots(loaded);
       await prefs.setString(
         _key,
         jsonEncode(loaded.map((entry) => entry.toJson()).toList()),
@@ -186,6 +272,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       current,
       ..._entries.where((entry) => entry.id != current.id),
     ].take(_maxEntries).toList();
+    _trimDetailedSnapshots(updated);
     setState(() {
       _entries = updated;
       if (_comparisonEntryId == null ||
@@ -201,6 +288,27 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       );
     } catch (error) {
       if (mounted) setState(() => _error = 'Could not save scan history: $error');
+    }
+  }
+
+  void _trimDetailedSnapshots(List<MpqScanHistoryEntry> entries) {
+    var retained = 0;
+    for (var index = 0; index < entries.length; index++) {
+      final entry = entries[index];
+      if (entry.fingerprints.isEmpty) continue;
+      retained++;
+      if (retained > _maxDetailedSnapshots) {
+        entries[index] = MpqScanHistoryEntry(
+          scannedAt: entry.scannedAt,
+          durationMs: entry.durationMs,
+          discoveredFiles: entry.discoveredFiles,
+          completedFiles: entry.completedFiles,
+          successCount: entry.successCount,
+          errorCount: entry.errorCount,
+          totalBytes: entry.totalBytes,
+          cancelled: entry.cancelled,
+        );
+      }
     }
   }
 
