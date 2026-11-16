@@ -23,6 +23,7 @@ class GameFolderReport {
     required this.folderExists,
     required this.executableFound,
     required this.dataFolderFound,
+    required this.wtfFolderFound,
     required this.localeFolders,
     required this.realmlistFiles,
     required this.archiveCount,
@@ -38,6 +39,7 @@ class GameFolderReport {
   final bool folderExists;
   final bool executableFound;
   final bool dataFolderFound;
+  final bool wtfFolderFound;
   final List<String> localeFolders;
   final List<String> realmlistFiles;
   final int archiveCount;
@@ -78,6 +80,7 @@ class GameFolderReport {
         folderExists: raw['folderExists'] as bool? ?? true,
         executableFound: raw['executableFound'] as bool? ?? false,
         dataFolderFound: raw['dataFolderFound'] as bool? ?? false,
+        wtfFolderFound: raw['wtfFolderFound'] as bool? ?? false,
         localeFolders: locales,
         realmlistFiles: realmlists,
         archiveCount: count,
@@ -100,6 +103,7 @@ class GameFolderReport {
         folderExists: false,
         executableFound: false,
         dataFolderFound: false,
+        wtfFolderFound: false,
         localeFolders: [],
         realmlistFiles: [],
         archiveCount: 0,
@@ -192,6 +196,7 @@ class GameFolderReport {
       folderExists: true,
       executableFound: executableFound,
       dataFolderFound: dataFolderFound,
+      wtfFolderFound: await Directory('${root.path}/WTF').exists(),
       localeFolders: locales,
       realmlistFiles: realmlists,
       archiveCount: archives,
@@ -371,6 +376,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                     ),
                   ],
                   _checkRow('Data folder', report.dataFolderFound),
+                  _checkRow('WTF folder', report.wtfFolderFound),
                   _checkRow('Locale folders', report.localeFolders.isNotEmpty,
                       detail: report.localeFolders.isEmpty
                           ? 'None detected'
