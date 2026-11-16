@@ -87,3 +87,17 @@ Changing a realmlist does not itself launch the game or prove that a server is c
 GitHub Actions workflow: `.github/workflows/build-launcher-apk.yml`
 
 The workflow runs Flutter dependency resolution, static analysis, unit tests, and a release APK build, then uploads the APK as an artifact.
+
+
+## MPQ SHA-256 fingerprints and local manifests
+
+The Game Folder Inspector can stream-hash MPQ archives with SHA-256 and display each relative path, size, and digest. The scanner reads archives as a stream rather than loading entire files into memory.
+
+The **Checksum Manifest** panel can:
+- Save a local baseline for the selected game folder.
+- Compare later scans and report unchanged, changed, added, and missing MPQ files.
+- Import and export a versioned JSON manifest.
+
+The local baseline is stored on the device and keyed to the selected folder path. JSON import/export allows a user-created baseline to be moved between devices. The manifest records its creation time and successful file hashes; unreadable files are excluded.
+
+**Important:** a locally created baseline is only a snapshot of the files at that moment. It is not an official Blizzard checksum list, and saving a baseline from a modified or damaged client does not establish that the client is original. For authoritative verification, compare against trusted checksums for the exact same client distribution.
