@@ -116,3 +116,14 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Added a separate `assembleDebug` CI target to produce an APK signed with Android's standard debug key for device testing; the workflow verifies the signature with `apksigner` and uploads it as `wow-lk-debug-test-apk`.
 - This debug-signed build is for testing only. It is not a public release or a replacement for a private release keystore.
 - Awaiting CI confirmation of the debug build and signature verification before sharing it as installable.
+
+
+## 2026-11-16 WOW LK keyboard, mouse, and touchscreen controls milestone
+- Confirmed the pinned native engine already routes physical keyboard events to the X server, receives external mouse motion through its touchpad/pointer-capture path, and provides a Keyboard command in the in-game navigation drawer to open the Android soft keyboard.
+- Added a dedicated built-in profile named `WoW ConsolePortLK`, which the existing WoW shortcut auto-selects by profile name.
+- The profile provides a left-side WASD virtual joystick/D-pad and six labelled action buttons mapped to keyboard keys `1`, `2`, `3`, `5`, `6`, and `7`, plus ESC and SPACE utility buttons.
+- Updated profile asset installation so a newly added built-in profile is copied on app upgrades when it is missing, while preserving an existing user profile file.
+- The native controls editor can move, resize, and save profile elements; profiles are stored in app-private files and survive app restarts. Users can edit the WOW LK profile in Input Controls > Controls Editor.
+- Added `scripts/apply-native-wow-controls.py` to install the profile and upgrade-safe profile-copy behavior into the pinned native engine. Added this patch to the native build workflow.
+- Hardware detection/input behavior is inherited from the native engine; physical keyboard keys are forwarded to the game and external mouse movement is handled by the existing pointer path. The soft keyboard remains available from the in-game drawer's Keyboard item when no physical keyboard is connected.
+- CI build and on-device validation are pending. Confirm the six key buttons, joystick, soft keyboard, external keyboard, and external mouse on a real device before marking the feature complete.

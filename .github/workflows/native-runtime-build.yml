@@ -57,6 +57,9 @@ jobs:
       - name: Apply native SAF game-folder importer
         run: python3 scripts/apply-native-game-import.py
 
+      - name: Apply WOW LK touchscreen controls profile
+        run: python3 scripts/apply-native-wow-controls.py
+
       - name: Apply WOW LK disconnect diagnostics
         run: python3 scripts/apply-native-diagnostics.py
 
