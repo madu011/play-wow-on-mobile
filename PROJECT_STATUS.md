@@ -179,3 +179,11 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Corrected the import-size preflight and progress denominator to recursively inspect nested files instead of adding only root-level file sizes.
 - When a SAF provider does not expose a size for every file, the UI now receives an unknown total and uses an indeterminate progress bar rather than showing a misleading percentage.
 - This does not replace runtime storage checks; Android may still report insufficient space during a copy if provider metadata is incomplete.
+
+
+## 2026-11-16 integrated native runtime settings bridge
+- Added Flutter MethodChannel actions that open the bundled WoW game settings, Winlator container editor, and touch-controls profile editor from the WOW LK Performance & Controls section.
+- Added matching launcher tiles with clear descriptions. These open native activities inside the same installed WOW LK APK; they do not require a separate Winlator installation.
+- The WoW settings screen applies realm, resolution, and view-distance values to the imported client configuration. The container editor exposes the existing Winlator graphics driver, DX wrapper, Box64, Wine, audio, environment, and drive configuration panels. The controls editor opens profile 0 for touch-layout editing.
+- Updated the Flutter graphics helper copy so it no longer claims that the native runtime is not integrated. The heuristic preset remains a recommendation; actual runtime configuration is performed in the native settings screens.
+- CI build and signature verification are required before distributing this revision. Physical-device validation is still required for activity launch, an existing container, profile availability, saving settings, and applying them to the game.
