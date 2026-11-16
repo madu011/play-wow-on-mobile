@@ -37,3 +37,8 @@ The full upstream native Android engine is now pinned as a Git submodule on this
 4. Port game-folder import and realm configuration using Android Storage Access Framework permissions; do not assume Flutter's persisted URI grants automatically transfer between package IDs.
 5. Audit asset and library licenses, ABI compatibility and target GPU support.
 6. Verify clean install, runtime setup, container start, game launch and shutdown on a physical device before calling the runtime ready.
+
+
+## Native engine CI build
+
+A dedicated GitHub Actions workflow now checks out the pinned submodule recursively, verifies the exact upstream commit, installs JDK 17 / Android SDK 34 / NDK 24.0.8215888 / CMake 3.22.1, and runs the upstream `assembleRelease` task. The output is uploaded as an unsigned CI artifact for build verification. This workflow builds the upstream engine as-is; it does not yet produce a branded WOW LK integrated app.
