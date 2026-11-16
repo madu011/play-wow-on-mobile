@@ -219,6 +219,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
   void didUpdateWidget(covariant GameFolderInspector oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.folderPath != widget.folderPath) {
+      _scanCancellation?.cancel();
       _report = GameFolderReport.inspect(widget.folderPath);
       _checksumFuture = null;
       _scanProgress = null;
