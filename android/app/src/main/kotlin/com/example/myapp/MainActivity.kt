@@ -40,7 +40,15 @@ class MainActivity : FlutterActivity() {
         if (uri == null) { result?.success(null); return }
         try {
             val flags = (data?.flags ?: 0) and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            if (flags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0) {
+                throw SecurityException("Android did not grant read access. Please select the WoW folder again and confirm access.")
+            }
             contentResolver.takePersistableUriPermission(uri, flags)
+            // Confirm that the persisted permission is really available before saving it.
+            val persisted = contentResolver.persistedUriPermissions.any {
+                it.uri == uri && it.isReadPermission
+            }
+            if (!persisted) throw SecurityException("Android could not keep permission for this folder. Please select the folder again.")
             getSharedPreferences(prefsName, MODE_PRIVATE).edit().putString("game_tree_uri", uri.toString()).apply()
             result?.success(uri.toString())
         } catch (e: Exception) { result?.error("TREE_PERMISSION", e.message, null) }
@@ -198,9 +206,19 @@ class MainActivity : FlutterActivity() {
     private fun scanTree(tree: Uri): Map<String, Any> {
         val rootId = DocumentsContract.getTreeDocumentId(tree)
         val rootUri = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
+        // Verify persisted SAF permission on every scan; stale URI strings must not look like access.
+        val hasRead = contentResolver.persistedUriPermissions.any {
+            it.uri == tree && it.isReadPermission
+        }
+        if (!hasRead) throw SecurityException("Saved folder permission has expired. Tap GRANT READ / WRITE ACCESS and select the WoW folder again.")
         val rootEntries = children(rootUri)
         val exe = rootEntries.any { it.name.equals("wow.exe", true) || it.name.equals("wow-64.exe", true) }
-        val data = rootEntries.firstOrNull { it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR }
+        // Some OEM document providers return an empty or generic MIME type for directories.
+        val data = rootEntries.firstOrNull {
+            it.name.equals("Data", true) &&
+                (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank() ||
+                 it.mime == "application/octet-stream")
+        }
         val locales = mutableSetOf<String>()
         val realmlists = mutableListOf<String>()
         val mpqs = mutableListOf<String>()
@@ -211,9 +229,13 @@ class MainActivity : FlutterActivity() {
                 if (depth > 12) return
                 for (entry in children(parent)) {
                     val relative = if (prefix.isEmpty()) entry.name else "$prefix/${entry.name}"
-                    if (entry.mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        if (prefix.isEmpty() && entry.name.length == 4 && entry.name.substring(0,2).all { it.isLetter() && it.isLowerCase() } &&
-                            entry.name.substring(2).all { it.isLetter() } && entry.name.substring(2).all { it.isUpperCase() }) {
+                    val looksLikeLocale = prefix.isEmpty() && entry.name.length == 4 &&
+                        entry.name.substring(0, 2).all { it.isLetter() && it.isLowerCase() } &&
+                        entry.name.substring(2).all { it.isLetter() && it.isUpperCase() }
+                    val isDirectory = entry.mime == DocumentsContract.Document.MIME_TYPE_DIR ||
+                        entry.mime.isBlank() || entry.mime == "application/octet-stream" || looksLikeLocale
+                    if (isDirectory) {
+                        if (looksLikeLocale) {
                             // Keep the locale directory visible even when a document provider
                             // reports an unknown archive size; file presence is the key check.
                             // Android document providers can return a null or generic MIME type
