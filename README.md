@@ -106,3 +106,7 @@ The local baseline is stored on the device and keyed to the selected folder path
 ### Multiple named MPQ baselines
 
 The Checksum Baseline Library supports multiple named snapshots for one selected game folder. Give each baseline a label such as "Clean install" or "Before update", select one to compare with the latest scan, and export or delete the selected entry. Imported JSON manifests are added as separately named baselines. Names must be unique within that folder's local library. Baselines remain local to the device unless exported; imported baselines are still user-provided reference snapshots, not official checksums.
+
+### MPQ scan progress and cancellation
+
+The SHA-256 scanner displays file-based progress, the archive currently being processed, and a completion summary with successful hashes, errors, bytes processed, and elapsed time. A scan can be cancelled between archives; if an archive is already being hashed, it is allowed to finish before the cancellation takes effect. A cancelled scan keeps the results for files completed before cancellation.
