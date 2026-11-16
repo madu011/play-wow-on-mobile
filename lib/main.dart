@@ -213,7 +213,7 @@ class _LauncherPageState extends State<LauncherPage> {
             ServerManagerCard(
               onServerSelected: (profile) {
                 setState(() => selectedServer = profile);
-                applyRealmToGameFolder(profile);
+                if (gameFolder != null) applyRealmToGameFolder(profile);
               },
             ),
             const SizedBox(height: 20),
