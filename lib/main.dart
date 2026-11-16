@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'server_manager.dart';
 import 'game_folder_inspector.dart';
-import 'game_ui_preview.dart';
 
 void main() => runApp(const AzerothApp());
 
@@ -25,12 +24,57 @@ class AzerothApp extends StatelessWidget {
         theme: ThemeData(
           brightness: Brightness.dark,
           scaffoldBackgroundColor: bg,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: gold,
-            brightness: Brightness.dark,
-          ),
+          colorScheme: ColorScheme.fromSeed(seedColor: gold, brightness: Brightness.dark)
+              .copyWith(primary: gold, secondary: const Color(0xFFB58A43), surface: const Color(0xFF171A20)),
           useMaterial3: true,
           fontFamily: 'Roboto',
+          outlinedButtonTheme: OutlinedButtonThemeData(style: ButtonStyle(
+            foregroundColor: const WidgetStatePropertyAll(Color(0xFFF1D18B)),
+            backgroundColor: const WidgetStatePropertyAll(Color(0xE916171B)),
+            side: const WidgetStatePropertyAll(BorderSide(color: Color(0xFF9A763B), width: 1.2)),
+            shape: WidgetStatePropertyAll(BeveledRectangleBorder(borderRadius: BorderRadius.circular(5))),
+            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14, vertical: 11)),
+            minimumSize: const WidgetStatePropertyAll(Size(44, 42)),
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: .45)),
+            overlayColor: const WidgetStatePropertyAll(Color(0x33E2B45D)),
+            elevation: const WidgetStatePropertyAll(3),
+          )),
+          filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(
+            foregroundColor: const WidgetStatePropertyAll(Color(0xFFF5D995)),
+            backgroundColor: const WidgetStatePropertyAll(Color(0xFF29231A)),
+            side: const WidgetStatePropertyAll(BorderSide(color: Color(0xFFB58A43), width: 1.3)),
+            shape: WidgetStatePropertyAll(BeveledRectangleBorder(borderRadius: BorderRadius.circular(5))),
+            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 15, vertical: 12)),
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: .7)),
+            overlayColor: const WidgetStatePropertyAll(Color(0x44E2B45D)),
+            elevation: const WidgetStatePropertyAll(3),
+          )),
+          elevatedButtonTheme: ElevatedButtonThemeData(style: ButtonStyle(
+            foregroundColor: const WidgetStatePropertyAll(Color(0xFFF5D995)),
+            backgroundColor: const WidgetStatePropertyAll(Color(0xFF29231A)),
+            side: const WidgetStatePropertyAll(BorderSide(color: Color(0xFFB58A43), width: 1.2)),
+            shape: WidgetStatePropertyAll(BeveledRectangleBorder(borderRadius: BorderRadius.circular(5))),
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.w800, fontSize: 11)),
+            elevation: const WidgetStatePropertyAll(3),
+          )),
+          textButtonTheme: TextButtonThemeData(style: ButtonStyle(
+            foregroundColor: const WidgetStatePropertyAll(Color(0xFFE8C77D)),
+            backgroundColor: const WidgetStatePropertyAll(Color(0x66181716)),
+            shape: WidgetStatePropertyAll(BeveledRectangleBorder(borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Color(0xFF70552F), width: .8))),
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.bold, fontSize: 10)),
+            overlayColor: const WidgetStatePropertyAll(Color(0x33E2B45D)),
+          )),
+          iconButtonTheme: IconButtonThemeData(style: ButtonStyle(
+            foregroundColor: const WidgetStatePropertyAll(Color(0xFFF0CE80)),
+            backgroundColor: const WidgetStatePropertyAll(Color(0xDD17191E)),
+            side: const WidgetStatePropertyAll(BorderSide(color: Color(0xFF806333), width: 1)),
+            shape: WidgetStatePropertyAll(BeveledRectangleBorder(borderRadius: BorderRadius.circular(4))),
+            overlayColor: const WidgetStatePropertyAll(Color(0x44E2B45D)),
+          )),
+          switchTheme: SwitchThemeData(
+            thumbColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? gold : const Color(0xFF9A9A9A)),
+            trackColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? const Color(0xFF6F542C) : const Color(0xFF30343B)),
+          ),
         ),
         home: const LauncherPage(),
       );
@@ -415,20 +459,6 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
             const SizedBox(height: 14),
             _classicTabStrip(),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const GameUiPreviewPage()),
-              ),
-              icon: const Icon(Icons.dashboard_customize, size: 19),
-              label: const Text('OPEN CLASSIC IN-GAME UI PREVIEW'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: gold,
-                side: const BorderSide(color: gold),
-                minimumSize: const Size.fromHeight(46),
-                textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: .6, fontSize: 10),
-              ),
-            ),
             const SizedBox(height: 18),
             Container(
               height: 176,
