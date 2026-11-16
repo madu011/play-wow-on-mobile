@@ -55,32 +55,9 @@ public final class WowGameFolderImporter {
             throw new IOException("The original game folder is not readable by WOW LK. Check Android storage permission.");
         }
 
-        File exe = new File(canonicalSelected, "Wow.exe");
-        File data = new File(canonicalSelected, "Data");
-        if (!exe.isFile() || !exe.canRead() || !data.isDirectory() || !data.canRead()) {
-            throw new IOException("Select the main WoW folder containing readable Wow.exe and Data/ files.");
-        }
-        requireReadableFile(new File(data, "common.MPQ"), "Data/common.MPQ");
-        requireReadableFile(new File(data, "expansion.MPQ"), "Data/expansion.MPQ");
-        requireReadableFile(new File(data, "lichking.MPQ"), "Data/lichking.MPQ");
-
-        File[] dataEntries = data.listFiles();
-        if (dataEntries == null || dataEntries.length == 0) {
-            throw new IOException("The Data folder is empty or cannot be read.");
-        }
-        boolean hasLocaleArchive = false;
-        for (File entry : dataEntries) {
-            if (!entry.isDirectory() || !entry.getName().matches("(?i)[a-z]{4}")) continue;
-            File localeArchive = new File(entry, "locale.MPQ");
-            if (localeArchive.isFile() && localeArchive.length() > 0 && localeArchive.canRead()) {
-                hasLocaleArchive = true;
-                break;
-            }
-        }
-        if (!hasLocaleArchive) {
-            throw new IOException("No valid locale folder with locale.MPQ was found under Data/. Check that the WoW client download is complete.");
-        }
-        return canonicalSelected;
+        // Link the selected original folder without scanning game archives or locale files.
+        // Winlator receives the existing folder path and reports launch-time runtime errors only.
+                return canonicalSelected;
     }
 
     private static void requireReadableFile(File file, String relativePath) throws IOException {
