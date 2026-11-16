@@ -251,31 +251,135 @@ public class WowLKCompanionActivity extends FlutterActivity {
     }
 
     private Map<String, Object> scanGameTree(String rawTreeUri) {
+        if (rawTreeUri == null) throw new IllegalArgumentException("No saved WoW folder permission. Select the original game folder again.");
+        Uri tree = Uri.parse(rawTreeUri);
+        boolean persisted = false;
+        for (android.content.UriPermission permission : getContentResolver().getPersistedUriPermissions()) {
+            if (permission.getUri().equals(tree) && permission.isReadPermission()) persisted = true;
+        }
+        if (!persisted) throw new SecurityException("Android no longer grants read access to this WoW folder. Select it again and tap Use this folder and Allow.");
+
         Map<String, Object> response = new HashMap<>();
+        ArrayList<String> detected = new ArrayList<>();
         ArrayList<String> locales = new ArrayList<>();
-        if (rawTreeUri != null) {
-            try {
-                Uri tree = Uri.parse(rawTreeUri);
-                Uri dataFolder = findChild(tree, DocumentsContract.getTreeDocumentId(tree), "Data", true);
-                if (dataFolder != null) {
-                    Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(dataFolder));
-                    try (Cursor cursor = getContentResolver().query(children,
-                        new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
-                        if (cursor != null) {
-                            int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
-                            int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
-                            while (cursor.moveToNext()) {
-                                String name = cursor.getString(nameCol);
-                                String mime = cursor.getString(mimeCol);
-                                if (name != null && DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) && name.matches("[A-Za-z]{2}[A-Za-z]{2}")) locales.add(name);
-                            }
-                        }
+        ArrayList<String> realmlists = new ArrayList<>();
+        ArrayList<String> emptyArchives = new ArrayList<>();
+        ArrayList<String> missingCore = new ArrayList<>();
+        String rootId = DocumentsContract.getTreeDocumentId(tree);
+        ArrayList<Map<String, Object>> rootItems = listDocumentChildren(tree, rootId);
+        boolean executable = false;
+        boolean wtf = false;
+        Uri dataFolder = null;
+        for (Map<String, Object> item : rootItems) {
+            String name = (String) item.get("name");
+            boolean dir = (Boolean) item.get("directory");
+            if (name.equalsIgnoreCase("Wow.exe") || name.equalsIgnoreCase("Wow-64.exe")) executable = true;
+            if (name.equalsIgnoreCase("WTF") && dir) {
+                wtf = true;
+                detected.add("WTF/");
+            }
+            if (name.equalsIgnoreCase("Data") && dir) {
+                dataFolder = DocumentsContract.buildDocumentUriUsingTree(tree, (String) item.get("id"));
+                detected.add("Data/");
+            }
+            if (name.equalsIgnoreCase("Wow.exe") || name.equalsIgnoreCase("Wow-64.exe")) detected.add(name);
+        }
+        if (dataFolder == null) throw new IllegalStateException("The selected folder is readable, but its Data/ folder was not listed. Select the main folder containing Wow.exe, not the Data folder itself.");
+        int archiveCount = 0;
+        long totalBytes = 0;
+        java.util.HashSet<String> coreFound = new java.util.HashSet<>();
+        ArrayList<Uri> pending = new ArrayList<>();
+        ArrayList<String> pendingPaths = new ArrayList<>();
+        pending.add(dataFolder);
+        pendingPaths.add("Data");
+        while (!pending.isEmpty()) {
+            Uri parent = pending.remove(0);
+            String parentPath = pendingPaths.remove(0);
+            for (Map<String, Object> item : listDocumentChildren(tree, DocumentsContract.getDocumentId(parent))) {
+                String name = (String) item.get("name");
+                boolean dir = (Boolean) item.get("directory");
+                String path = parentPath + "/" + name;
+                if (dir) {
+                    if (parentPath.equals("Data") && name.matches("[A-Za-z]{2}[A-Za-z]{2}")) {
+                        locales.add(name);
+                        detected.add(path + "/");
+                    }
+                    if (parentPath.split("/").length < 3) {
+                        pending.add(DocumentsContract.buildDocumentUriUsingTree(tree, (String) item.get("id")));
+                        pendingPaths.add(path);
+                    }
+                } else {
+                    detected.add(path);
+                    if (name.equalsIgnoreCase("realmlist.wtf")) realmlists.add(path);
+                    if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".mpq")) {
+                        archiveCount++;
+                        long size = (Long) item.get("size");
+                        totalBytes += Math.max(0L, size);
+                        if (size == 0) emptyArchives.add(path);
+                        String lower = name.toLowerCase(java.util.Locale.ROOT);
+                        if (lower.equals("common.mpq") || lower.equals("common-2.mpq") ||
+                            lower.equals("expansion.mpq") || lower.equals("lichking.mpq")) coreFound.add(lower);
                     }
                 }
-            } catch (Exception ignored) {}
+            }
         }
+        String[] core = {"common.mpq", "common-2.mpq", "expansion.mpq", "lichking.mpq"};
+        for (String name : core) if (!coreFound.contains(name)) missingCore.add(name);
+        java.util.Collections.sort(locales);
+        java.util.Collections.sort(realmlists);
+        java.util.Collections.sort(detected);
+        response.put("folderExists", true);
+        response.put("executableFound", executable);
+        response.put("dataFolderFound", dataFolder != null);
+        response.put("wtfFolderFound", wtf);
         response.put("localeFolders", locales);
+        response.put("realmlistFiles", realmlists);
+        response.put("archiveCount", archiveCount);
+        response.put("totalArchiveBytes", totalBytes);
+        response.put("emptyArchiveFiles", emptyArchives);
+        response.put("missingCoreArchives", missingCore);
+        response.put("detectedFiles", detected);
+        ArrayList<String> notes = new ArrayList<>();
+        if (!executable) notes.add("Wow.exe / Wow-64.exe was not listed in the selected root folder.");
+        if (!wtf) notes.add("WTF/ folder was not found in the selected root folder.");
+        if (locales.isEmpty()) notes.add("No locale folder such as enUS or enGB was found under Data/.");
+        if (realmlists.isEmpty()) notes.add("No realmlist.wtf was found under a locale folder.");
+        if (archiveCount == 0) notes.add("No MPQ archives were listed under Data/.");
+        response.put("notes", notes);
         return response;
+    }
+
+    private ArrayList<Map<String, Object>> listDocumentChildren(Uri tree, String parentId) {
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId);
+        String[] columns = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE
+        };
+        Cursor cursor = getContentResolver().query(children, columns, null, null, null);
+        if (cursor == null) throw new IllegalStateException("Android's folder provider did not return a file listing. Re-select the WoW folder and allow access.");
+        ArrayList<Map<String, Object>> result = new ArrayList<>();
+        try (Cursor c = cursor) {
+            int idCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int nameCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+            int mimeCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            int sizeCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE);
+            while (c.moveToNext()) {
+                String name = c.getString(nameCol);
+                String mime = c.getString(mimeCol);
+                boolean directory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ||
+                    mime == null || mime.isEmpty() || "application/octet-stream".equals(mime) &&
+                    (name.equalsIgnoreCase("Data") || name.equalsIgnoreCase("WTF") || name.matches("[A-Za-z]{2}[A-Za-z]{2}"));
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", c.getString(idCol));
+                item.put("name", name == null ? "" : name);
+                item.put("directory", directory);
+                item.put("size", sizeCol >= 0 && !c.isNull(sizeCol) ? c.getLong(sizeCol) : 0L);
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     private boolean writeRealmlist(String rawTreeUri, String content, String localeName) {
