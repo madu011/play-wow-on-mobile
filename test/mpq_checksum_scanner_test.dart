@@ -48,6 +48,47 @@ void main() {
     expect(report.successCount, 1);
   });
 
+  test('reports progress while hashing files', () async {
+    final data = Directory('${temporaryDirectory.path}/Data');
+    await data.create();
+    await File('${data.path}/one.MPQ').writeAsString('first');
+    await File('${data.path}/two.MPQ').writeAsString('second');
+
+    final updates = <MpqScanProgress>[];
+    final report = await MpqChecksumScanner.scan(
+      data.path,
+      onProgress: updates.add,
+    );
+
+    expect(report.completedFileCount, 2);
+    expect(report.discoveredFileCount, 2);
+    expect(report.cancelled, isFalse);
+    expect(report.duration, isA<Duration>());
+    expect(updates, isNotEmpty);
+    expect(updates.last.completedFiles, 2);
+    expect(updates.last.fraction, 1);
+  });
+
+  test('cancels cleanly between archive files', () async {
+    final data = Directory('${temporaryDirectory.path}/Data');
+    await data.create();
+    await File('${data.path}/one.MPQ').writeAsString('first');
+    await File('${data.path}/two.MPQ').writeAsString('second');
+    final cancellation = MpqScanCancellation();
+
+    final report = await MpqChecksumScanner.scan(
+      data.path,
+      cancellation: cancellation,
+      onProgress: (progress) {
+        if (progress.completedFiles == 0) cancellation.cancel();
+      },
+    );
+
+    expect(report.cancelled, isTrue);
+    expect(report.completedFileCount, 0);
+    expect(report.discoveredFileCount, 2);
+  });
+
   test('throws a clear file system error when Data folder is missing',
       () async {
     await expectLater(
