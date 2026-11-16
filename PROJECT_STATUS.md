@@ -74,3 +74,14 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Re-open and validate the imported folder after process restart; do not rely only on an in-memory URI or path.
 - Keep the current native launch/container path intact and update its F: drive mapping only after a complete, validated import.
 - Once this native import is working, connect realm profile selection and realmlist writing to the imported folder. The Flutter Realm Manager remains a separate existing feature until an explicit shared-data bridge is implemented.
+
+
+## 2026-11-16 native SAF importer implementation checkpoint
+- Added `native-patches/WowGameFolderImporter.java`: copies the selected SAF tree into app-owned storage, validates root-level `Wow.exe` and `Data/`, streams file contents, reports copied bytes, checks available space using sizes exposed by the provider, supports cancellation, stages into a temporary directory, and preserves/restores the previous import when finalizing fails.
+- Added `scripts/apply-native-game-import.py`: installs the helper into the pinned native submodule and patches the native launcher to use `ACTION_OPEN_DOCUMENT_TREE` instead of its legacy manual filesystem browser.
+- Updated `.github/workflows/native-runtime-build.yml` to apply the importer patch before building.
+- The runtime still receives a normal filesystem path under the app-specific `wow-client/WoW` directory, not a `content://` URI.
+- Source files are committed, but the new native build is still running. No successful compile or device import test is claimed yet.
+- Known limitation to revisit after CI: some document providers omit file sizes from metadata, so the preflight free-space estimate may be incomplete. The copy operation will still report a storage error if the device runs out of space; improve recursive size estimation and user-facing recovery before calling this production-ready.
+- Latest native build run for the importer workflow change: https://github.com/madu011/play-wow-on-mobile/actions/runs/43917972991
+- Next: inspect CI output; fix compile issues, then test SAF import on a real Android device before connecting Realm Manager profiles to the imported folder.
