@@ -416,8 +416,28 @@ class _LauncherPageState extends State<LauncherPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: CustomPaint(painter: _IcecrownBackgroundPainter()),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x66202E49),
+                    Color(0xAA080D18),
+                    Color(0xE6090D16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
           children: [
             Row(
@@ -723,6 +743,9 @@ class _LauncherPageState extends State<LauncherPage> {
           ],
         ),
       ),
+    ),
+        ],
+      ),
     );
   }
 
@@ -923,4 +946,89 @@ class _LauncherPageState extends State<LauncherPage> {
         child: Text(text, style: TextStyle(
             color: color, fontSize: 9, fontWeight: FontWeight.bold)),
       );
+}
+
+/// Atmospheric, original Icecrown-inspired backdrop drawn locally so the
+/// launcher does not depend on remote images or large bundled artwork.
+class _IcecrownBackgroundPainter extends CustomPainter {
+  const _IcecrownBackgroundPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bounds = Offset.zero & size;
+    canvas.drawRect(bounds, Paint()..shader = const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFF182B46), Color(0xFF101A2B), Color(0xFF070B13)],
+    ).createShader(bounds));
+
+    final glow = Paint()
+      ..shader = RadialGradient(
+        colors: [const Color(0x665CA9E8), const Color(0x005CA9E8)],
+      ).createShader(Rect.fromCircle(
+        center: Offset(size.width * .52, size.height * .34),
+        radius: size.width * .62,
+      ));
+    canvas.drawRect(bounds, glow);
+
+    final farPaint = Paint()..color = const Color(0xFF263D59);
+    final midPaint = Paint()..color = const Color(0xFF172A43);
+    final nearPaint = Paint()..color = const Color(0xFF0B1422);
+    final ridge = Path()
+      ..moveTo(0, size.height * .56)
+      ..lineTo(size.width * .13, size.height * .39)
+      ..lineTo(size.width * .22, size.height * .50)
+      ..lineTo(size.width * .37, size.height * .30)
+      ..lineTo(size.width * .49, size.height * .49)
+      ..lineTo(size.width * .63, size.height * .34)
+      ..lineTo(size.width * .78, size.height * .51)
+      ..lineTo(size.width * .91, size.height * .37)
+      ..lineTo(size.width, size.height * .48)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(ridge, farPaint);
+
+    final towers = <(double, double, double)>[
+      (.08, .50, .20), (.24, .39, .27), (.76, .42, .25),
+      (.91, .48, .21), (.52, .25, .37),
+    ];
+    for (final tower in towers) {
+      final x = size.width * tower.$1;
+      final base = size.height * tower.$2;
+      final h = size.height * tower.$3;
+      final w = size.width * .055;
+      final path = Path()
+        ..moveTo(x - w, base)
+        ..lineTo(x - w * .58, base - h * .72)
+        ..lineTo(x, base - h)
+        ..lineTo(x + w * .58, base - h * .72)
+        ..lineTo(x + w, base)
+        ..close();
+      canvas.drawPath(path, midPaint);
+      final iceEdge = Paint()
+        ..color = const Color(0x6679B8E8)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+      canvas.drawPath(path, iceEdge);
+      canvas.drawLine(Offset(x, base - h), Offset(x, base - h * .35),
+          Paint()..color = const Color(0x557FC8F4)..strokeWidth = 1.5);
+    }
+
+    final snow = Paint()..color = const Color(0x227BB9E8);
+    for (var i = 0; i < 22; i++) {
+      final x = size.width * ((i * 37 % 101) / 100);
+      final y = size.height * ((i * 61 % 97) / 100);
+      canvas.drawCircle(Offset(x, y), i % 4 == 0 ? 1.8 : 1.0, snow);
+    }
+    final vignette = Paint()
+      ..shader = RadialGradient(
+        colors: [const Color(0x00000000), const Color(0x99030710)],
+        stops: const [0.42, 1],
+      ).createShader(bounds);
+    canvas.drawRect(bounds, vignette);
+  }
+
+  @override
+  bool shouldRepaint(covariant _IcecrownBackgroundPainter oldDelegate) => false;
 }
