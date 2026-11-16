@@ -211,17 +211,34 @@ public class WowLKCompanionActivity extends FlutterActivity {
         }
         final Uri treeUri = data.getData();
         try {
-            int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            int offered = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            int flags = offered & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            if ((flags & Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
+                callback.error("TREE_READ_PERMISSION", "Android did not grant read access. Select the main WoW folder and tap Use this folder, then Allow.", null);
+                return;
+            }
             getContentResolver().takePersistableUriPermission(treeUri, flags);
+            boolean persistedRead = false;
+            for (android.content.UriPermission permission : getContentResolver().getPersistedUriPermissions()) {
+                if (permission.getUri().equals(treeUri) && permission.isReadPermission()) persistedRead = true;
+            }
+            if (!persistedRead) {
+                callback.error("TREE_PERMISSION", "Android did not retain permission for this folder. Please select it again.", null);
+                return;
+            }
         } catch (SecurityException error) {
-            callback.error("TREE_PERMISSION", "Android could not retain access to the selected folder.", error.getMessage());
+            callback.error("TREE_PERMISSION", "Android could not retain access to the selected folder: " + error.getMessage(), null);
             return;
         }
         try {
             Map<String, Object> fileReport = scanGameTree(treeUri.toString());
             if (!Boolean.TRUE.equals(fileReport.get("executableFound")) ||
                 !Boolean.TRUE.equals(fileReport.get("dataFolderFound"))) {
-                throw new IllegalStateException("The selected folder is accessible, but Wow.exe and Data/ were not both found at its root. Select the main WoW folder.");
+                @SuppressWarnings("unchecked")
+                ArrayList<String> detected = (ArrayList<String>) fileReport.get("detectedFiles");
+                throw new IllegalStateException("Folder access was granted, but the selected folder is not the WoW root. Detected: " +
+                    (detected == null || detected.isEmpty() ? "no entries returned by Android" : android.text.TextUtils.join(", ", detected)) +
+                    ". Select the folder that directly contains Wow.exe and Data/.");
             }
             File originalGameFolder = WowGameFolderImporter.resolveAndValidateTree(this, treeUri);
             getCompanionPreferences().edit().putString("game_tree_uri", treeUri.toString())
@@ -374,11 +391,30 @@ public class WowLKCompanionActivity extends FlutterActivity {
             while (c.moveToNext()) {
                 String name = c.getString(nameCol);
                 String mime = c.getString(mimeCol);
-                boolean looksLikeKnownDirectory = name.equalsIgnoreCase("Data") ||
-                    name.equalsIgnoreCase("WTF") || name.matches("[A-Za-z]{2}[A-Za-z]{2}");
-                boolean directory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ||
-                    (looksLikeKnownDirectory && (mime == null || mime.isEmpty() ||
-                     "application/octet-stream".equals(mime)));
+                String safeName = name == null ? "" : name;
+                boolean looksLikeKnownDirectory = safeName.equalsIgnoreCase("Data") ||
+                    safeName.equalsIgnoreCase("WTF") ||
+                    safeName.matches("[A-Za-z]{2}[A-Za-z]{2}");
+                // OEM document providers often return null, blank, or octet-stream
+                // MIME types for real directories. Confirm those candidates by
+                // successfully querying their child document list.
+                boolean directory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime);
+                if (!directory && looksLikeKnownDirectory) {
+                    boolean providerAmbiguous = mime == null || mime.isEmpty() ||
+                        "application/octet-stream".equals(mime);
+                    if (providerAmbiguous) {
+                        try {
+                            Uri candidateChildren = DocumentsContract.buildChildDocumentsUriUsingTree(
+                                tree, c.getString(idCol));
+                            Cursor probe = getContentResolver().query(candidateChildren,
+                                new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID}, null, null, null);
+                            if (probe != null) {
+                                probe.close();
+                                directory = true;
+                            }
+                        } catch (Exception ignored) { }
+                    }
+                }
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", c.getString(idCol));
                 item.put("name", name == null ? "" : name);
