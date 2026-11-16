@@ -135,3 +135,12 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - This helps verify whether Android recognizes a connected keyboard or mouse, separately from whether the game runtime receives its events. It does not force-enable unsupported peripherals or guarantee game-level input.
 - The diagnostics screen remains available from the native launcher. Run it with peripherals connected to capture their recognition state.
 - Build verification for this input-device diagnostics addition is pending; physical keyboard/mouse and touchscreen control tests are still required on a real Android device.
+
+
+## 2026-11-16 integrated Android application — phase 1 implementation
+- Integration target: one Android package based on the pinned native WoW Mobile application, with the existing Flutter companion compiled as an Android Archive (AAR) and hosted as an in-app FlutterActivity.
+- The Flutter companion becomes the app's launcher screen. Its primary action opens the native WoW runtime launcher Activity inside the same installed package; this is an in-app Activity transition, not a second installed application.
+- Added scripts/apply-native-flutter-companion.py to the native build pipeline. It wires the generated Flutter AAR Maven repository into the native Gradle build, adds the Flutter AAR dependency, registers the companion Activity, and moves the launcher intent filter to the Flutter screen.
+- Added a native MethodChannel entry point for openNativeGameLauncher and a basic device-information response. The existing Flutter SAF folder picker, realmlist profile persistence, and native runtime game-folder import are not yet sharing data; that is the next integration phase.
+- CI now builds the Flutter AAR with Flutter 3.35.7 before assembling the native application. The integrated debug APK is uploaded as wow-lk-integrated-debug-test-apk after signature verification.
+- This phase is not complete until CI proves the merged APK builds. Even after CI succeeds, physical-device tests are required for Flutter screen startup, native launcher navigation, plugin registration, SAF import, game provisioning, and WoW launch.

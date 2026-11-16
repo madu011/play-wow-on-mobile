@@ -274,3 +274,10 @@ The name "Play WoW on Mobile" describes the project's goal, not a guarantee that
 ## License
 
 No open-source license has been selected in this repository yet. Until a license is added, do not assume that the source code may be redistributed or reused. Choose a license before inviting outside contributors to reuse or redistribute the project.
+
+
+## Integrated Android application build
+
+The runtime/native-engine-import development branch now builds toward a single WOW LK Android package: the Flutter companion is embedded into the native WoW Mobile host application as an in-app Flutter screen. The Flutter companion is the launcher screen, and its OPEN GAME ENGINE action opens the native Winlator/Wine runtime launcher within the same app.
+
+The current integration phase does not yet synchronize every Flutter companion feature with the native engine. In particular, the Flutter SAF-selected game folder and saved Realm Manager profiles are not yet automatically transferred into the native runtime's storage/configuration. Treat the integrated APK as an experimental development build until those bridges and real-device gameplay checks are complete.

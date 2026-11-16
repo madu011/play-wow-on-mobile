@@ -35,6 +35,9 @@ jobs:
           git -C vendor/wow-mobile-engine rev-parse HEAD
           test "$(git -C vendor/wow-mobile-engine rev-parse HEAD)" = "0c8068f617737d9c0fb6246f37b54f85b620b09d"
 
+      - name: Integrate Flutter companion into native Android app
+        run: python3 scripts/apply-native-flutter-companion.py
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -50,6 +53,19 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
+
+      - name: Set up Flutter companion toolchain
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter companion dependencies
+        run: flutter pub get
+
+      - name: Build Flutter companion Android archive
+        run: flutter build aar --no-debug --no-profile
 
       - name: Apply WOW LK launcher branding
         run: python3 scripts/apply-wowlk-branding.py
@@ -90,7 +106,7 @@ jobs:
       - name: Upload signed debug test APK
         uses: actions/upload-artifact@v4
         with:
-          name: wow-lk-debug-test-apk
+          name: wow-lk-integrated-debug-test-apk
           path: vendor/wow-mobile-engine/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

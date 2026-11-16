@@ -718,12 +718,27 @@ class _LauncherPageState extends State<LauncherPage> {
             SizedBox(
               height: 58,
               child: FilledButton.icon(
-                onPressed: () => showInfo(
-                  'Runtime not ready',
-                  'The game runtime is not ready yet. Selected realm: ${selectedServer?.name ?? 'None'}. Realmlist: ${selectedServer?.realmlistLine ?? 'Not selected'}. Realm profiles are saved locally, but applying the selected realmlist to the game folder and launching the game still need runtime integration.',
-                ),
+                onPressed: () async {
+                  try {
+                    await _storageChannel.invokeMethod<bool>('openNativeGameLauncher');
+                  } on PlatformException catch (error) {
+                    if (mounted) {
+                      showInfo(
+                        'Game engine unavailable',
+                        'The native WoW engine could not be opened: ${error.message ?? error.code}',
+                      );
+                    }
+                  } on MissingPluginException {
+                    if (mounted) {
+                      showInfo(
+                        'Game engine unavailable',
+                        'This companion screen must run inside the integrated WOW LK Android app.',
+                      );
+                    }
+                  }
+                },
                 icon: const Icon(Icons.play_arrow, size: 28),
-                label: const Text('PLAY WORLD OF WARCRAFT',
+                label: const Text('OPEN GAME ENGINE',
                     style: TextStyle(fontWeight: FontWeight.w900,
                         letterSpacing: 1)),
                 style: FilledButton.styleFrom(
