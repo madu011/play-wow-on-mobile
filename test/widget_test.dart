@@ -18,4 +18,26 @@ void main() {
     );
     expect(find.text('SELECT WOW GAME FOLDER'), findsOneWidget);
   });
+
+  testWidgets('graphics preset can be changed and diagnostics controls render',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const AzerothApp());
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.scrollUntilVisible(
+      find.text('Graphics preset'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Medium').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Graphics preset'), findsOneWidget);
+    expect(find.text('RESCAN DEVICE'), findsOneWidget);
+    expect(find.text('COPY REPORT'), findsOneWidget);
+  });
 }
