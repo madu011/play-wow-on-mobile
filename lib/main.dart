@@ -76,9 +76,9 @@ class _LauncherPageState extends State<LauncherPage> {
         // Conservative UI recommendation only; the game runtime is not integrated yet.
         lowGraphics = ramMb < 6000 || cores <= 6;
       });
-    } on PlatformException catch (error) {
+    } catch (error) {
       if (!mounted) return;
-      setState(() { deviceScanComplete = true; deviceInfo = {'error': error.message ?? 'Device scan failed'}; });
+      setState(() { deviceScanComplete = true; deviceInfo = {'error': error.toString()}; });
     }
   }
 
