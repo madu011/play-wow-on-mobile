@@ -30,6 +30,8 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Select Java 17 for Gradle
+        run: flutter config --jdk-dir="$JAVA_HOME"
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze
