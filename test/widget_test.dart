@@ -24,17 +24,21 @@ void main() {
     await tester.pumpWidget(const AzerothApp());
     await tester.pump(const Duration(milliseconds: 100));
 
+    final preset = find.byType(DropdownButtonFormField<String>);
     await tester.scrollUntilVisible(
-      find.text('Graphics preset'),
-      300,
+      preset,
+      250,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    await tester.ensureVisible(preset);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(preset, findsOneWidget);
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
+    await tester.tap(preset);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Medium').last, findsOneWidget);
     await tester.tap(find.text('Medium').last);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Graphics preset'), findsOneWidget);
     expect(find.text('RESCAN DEVICE'), findsOneWidget);
