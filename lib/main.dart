@@ -50,6 +50,10 @@ class _LauncherPageState extends State<LauncherPage> {
   bool lowGraphics = true;
   bool showTouchControls = true;
   String? gameTreeUri;
+  int selectedNavTab = 0;
+  final GlobalKey _gameSectionKey = GlobalKey();
+  final GlobalKey _serverSectionKey = GlobalKey();
+  final GlobalKey _toolsSectionKey = GlobalKey();
   static const _storageChannel = MethodChannel('wow.lk/storage');
 
   @override
@@ -122,6 +126,19 @@ class _LauncherPageState extends State<LauncherPage> {
       showInfo('Could not update realmlist', 'Details: $error');
     }
   }
+  void _jumpToSection(int index, GlobalKey key) {
+    setState(() => selectedNavTab = index);
+    final target = key.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeInOutCubic,
+        alignment: .04,
+      );
+    }
+  }
+
   void showInfo(String title, String message) {
     showDialog<void>(
       context: context,
@@ -183,7 +200,9 @@ class _LauncherPageState extends State<LauncherPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 14),
+            _classicTabStrip(),
+            const SizedBox(height: 18),
             Container(
               height: 176,
               decoration: BoxDecoration(
@@ -218,7 +237,7 @@ class _LauncherPageState extends State<LauncherPage> {
               ),
             ),
             const SizedBox(height: 22),
-            _sectionTitle('GAME CLIENT'),
+            Container(key: _gameSectionKey, child: _sectionTitle('GAME CLIENT')),
             _panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,10 +290,10 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
             if (gameFolder != null) ...[
               const SizedBox(height: 16),
-              GameFolderInspector(folderPath: gameFolder!),
+              GameFolderInspector(folderPath: gameFolder!, treeUri: gameTreeUri),
             ],
             const SizedBox(height: 20),
-            _sectionTitle('SERVER MANAGER'),
+            Container(key: _serverSectionKey, child: _sectionTitle('SERVER MANAGER')),
             ServerManagerCard(
               onServerSelected: (profile) {
                 setState(() => selectedServer = profile);
@@ -284,7 +303,7 @@ class _LauncherPageState extends State<LauncherPage> {
               },
             ),
             const SizedBox(height: 20),
-            _sectionTitle('PERFORMANCE & CONTROLS'),
+            Container(key: _toolsSectionKey, child: _sectionTitle('PERFORMANCE & CONTROLS')),
             _panel(
               child: Column(
                 children: [
@@ -338,6 +357,70 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _classicTabStrip() {
+    final tabs = [
+      ('GAME', Icons.shield_outlined, _gameSectionKey),
+      ('REALMS', Icons.public, _serverSectionKey),
+      ('OPTIONS', Icons.settings, _toolsSectionKey),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17130F),
+        border: Border.all(color: const Color(0xFF76572E), width: 1.2),
+        borderRadius: BorderRadius.circular(9),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 3))],
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => _jumpToSection(i, tabs[i].$3),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
+                    decoration: BoxDecoration(
+                      gradient: selectedNavTab == i
+                          ? const LinearGradient(colors: [Color(0xFF80602F), Color(0xFF49351D)])
+                          : null,
+                      color: selectedNavTab == i ? null : const Color(0xFF211B16),
+                      border: Border.all(
+                        color: selectedNavTab == i ? const Color(0xFFE5BD70) : const Color(0xFF59452D),
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(tabs[i].$2, size: 16, color: selectedNavTab == i ? const Color(0xFFFFE3A5) : muted),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            tabs[i].$1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selectedNavTab == i ? const Color(0xFFFFE3A5) : muted,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: .8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
