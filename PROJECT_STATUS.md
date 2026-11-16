@@ -144,3 +144,9 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Added a native MethodChannel entry point for openNativeGameLauncher and a basic device-information response. The existing Flutter SAF folder picker, realmlist profile persistence, and native runtime game-folder import are not yet sharing data; that is the next integration phase.
 - CI now builds the Flutter AAR with Flutter 3.35.7 before assembling the native application. The integrated debug APK is uploaded as wow-lk-integrated-debug-test-apk after signature verification.
 - This phase is not complete until CI proves the merged APK builds. Even after CI succeeds, physical-device tests are required for Flutter screen startup, native launcher navigation, plugin registration, SAF import, game provisioning, and WoW launch.
+
+
+## 2026-11-16 Flutter AAR integration pipeline correction
+- Corrected the native CI ordering so Flutter 3.35.7 is installed and the Flutter AAR is built before the native patch script checks for the generated Maven artifact.
+- Added the official Flutter engine Maven repository alongside the generated local Flutter AAR repository so the native Gradle app can resolve the Flutter embedding dependency.
+- The integrated build is now the first validation of this add-to-app boundary; resolve any dependency-coordinate or Gradle compatibility issues from actual CI output before claiming integration complete.

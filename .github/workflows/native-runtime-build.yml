@@ -35,8 +35,6 @@ jobs:
           git -C vendor/wow-mobile-engine rev-parse HEAD
           test "$(git -C vendor/wow-mobile-engine rev-parse HEAD)" = "0c8068f617737d9c0fb6246f37b54f85b620b09d"
 
-      - name: Integrate Flutter companion into native Android app
-        run: python3 scripts/apply-native-flutter-companion.py
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -66,6 +64,9 @@ jobs:
 
       - name: Build Flutter companion Android archive
         run: flutter build aar --no-debug --no-profile
+
+      - name: Integrate Flutter companion into native Android app
+        run: python3 scripts/apply-native-flutter-companion.py
 
       - name: Apply WOW LK launcher branding
         run: python3 scripts/apply-wowlk-branding.py

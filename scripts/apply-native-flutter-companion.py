@@ -22,7 +22,7 @@ if not AAR_POM.is_file():
 
 root_gradle = NATIVE / "build.gradle"
 replace_once(root_gradle, "allprojects {\n    repositories {\n",
-             'allprojects {\n    repositories {\n        maven { url "$rootDir/../../build/host/outputs/repo" }\n')
+             'allprojects {\n    repositories {\n        maven { url "$rootDir/../../build/host/outputs/repo" }\n        maven { url "https://storage.googleapis.com/download.flutter.io" }\n')
 
 app_gradle = NATIVE / "app" / "build.gradle"
 replace_once(app_gradle, "dependencies {\n",
