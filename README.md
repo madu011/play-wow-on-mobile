@@ -4,6 +4,13 @@ A Flutter launcher prototype for World of Warcraft: Wrath of the Lich King 3.3.5
 
 
 
+
+## Game data integrity scan
+
+The Game Folder Inspector recursively scans the selected `Data/` directory for MPQ archives. It reports the archive count, combined file size, zero-byte archives, and whether common WotLK archive names (`common.MPQ`, `common-2.MPQ`, `expansion.MPQ`, and `lichking.MPQ`) are present.
+
+This is a read-only structural check. It does not open or validate MPQ archive contents, compare cryptographic checksums, or prove that a client is complete. Archive naming can vary between client distributions, so a missing-name warning is informational and should be checked against the exact client package.
+
 ## WoW executable metadata check
 
 The Game Folder Inspector also examines the selected `Wow.exe` (or `Wow-64.exe`) as a Windows PE file. It reports the PE architecture and optional-header type, then scans the executable for a small set of known WotLK version strings, including the commonly associated `3.3.5.12340` marker.
