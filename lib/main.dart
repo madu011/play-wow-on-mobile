@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'server_manager.dart';
-import 'game_folder_inspector.dart';
 
 void main() => runApp(const AzerothApp());
 
@@ -339,7 +338,6 @@ class _LauncherPageState extends State<LauncherPage> {
       final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
       if (mounted && uri != null) {
         setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Linked original WoW folder'; });
-        await _refreshGameLocales();
       }
     } catch (_) {}
   }
@@ -364,39 +362,7 @@ class _LauncherPageState extends State<LauncherPage> {
   }
 
 
-  Future<void> _refreshGameLocales() async {
-    final treeUri = gameTreeUri;
-    if (treeUri == null) return;
-    try {
-      final scan = await _storageChannel.invokeMapMethod<String, dynamic>('scanGameTree', {'treeUri': treeUri});
-      final locales = (scan?['localeFolders'] as List? ?? const []).cast<String>();
-      if (!mounted) return;
-      setState(() {
-        gameLocales = locales;
-        if (selectedLocale != null && !locales.contains(selectedLocale)) selectedLocale = null;
-        if (locales.length == 1) selectedLocale = locales.first;
-      });
-    } catch (_) {
-      if (mounted) setState(() => gameLocales = []);
-    }
-  }
-
-  Future<String?> _chooseGameLocale() async {
-    if (gameLocales.isEmpty) await _refreshGameLocales();
-    if (!mounted || gameLocales.isEmpty) return null;
-    if (gameLocales.length == 1) return gameLocales.first;
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        backgroundColor: panel,
-        title: const Text('Choose game language', style: TextStyle(color: gold)),
-        children: gameLocales.map((locale) => SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, locale),
-          child: Text(locale, style: const TextStyle(color: Colors.white)),
-        )).toList(),
-      ),
-    );
-  }
+  Future<String?> _chooseGameLocale() async => selectedLocale ?? 'enUS';
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
     final treeUri = gameTreeUri;
@@ -692,38 +658,15 @@ class _LauncherPageState extends State<LauncherPage> {
                     ),
                   ),
                   const SizedBox(height: 9),
-                  OutlinedButton.icon(
-                    onPressed: gameTreeUri == null ? null : () async {
-                      await _refreshGameLocales();
-                      if (!mounted) return;
-                      showInfo(
-                        gameLocales.isNotEmpty ? 'GAME FILES DETECTED' : 'GAME FILE SCAN',
-                        gameLocales.isNotEmpty
-                          ? 'Found locale folder(s): ${gameLocales.join(', ')}. The original game folder remains in place; no files were copied.'
-                          : 'No standard locale folder was detected through the saved Android folder permission. Re-grant access to the main WoW folder containing Wow.exe and Data/.',
-                      );
-                    },
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('VERIFY GAME FILE ACCESS'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: gold,
-                      side: const BorderSide(color: gold),
-                      minimumSize: const Size.fromHeight(44),
-                    ),
-                  ),
                   Text(
                     gameTreeUri == null
                         ? 'Grant Android read/write access, then select the original folder containing Wow.exe and Data/. No game files are copied.'
-                        : 'Folder permission is saved. Verify the detected files before applying a realm. Game files remain in their original location.',
+                        : 'Folder permission is saved. Game files remain in their original location.',
                     style: const TextStyle(color: muted, fontSize: 10),
                   ),
                 ],
               ),
             ),
-            if (gameFolder != null) ...[
-              const SizedBox(height: 16),
-              GameFolderInspector(folderPath: gameFolder!, treeUri: gameTreeUri),
-            ],
             const SizedBox(height: 20),
             Container(key: _serverSectionKey, child: _sectionTitle('SERVER MANAGER')),
             ServerManagerCard(
