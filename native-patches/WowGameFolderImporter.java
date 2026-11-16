@@ -35,12 +35,12 @@ public final class WowGameFolderImporter {
                                   Listener listener) throws IOException {
         ContentResolver resolver = context.getContentResolver();
         String rootId = DocumentsContract.getTreeDocumentId(treeUri);
-        Uri rootUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId);
+        Uri rootChildrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, rootId);
 
         boolean hasExe = false;
         boolean hasData = false;
         long totalBytes = 0L;
-        try (Cursor cursor = resolver.query(rootUri, CHILD_COLUMNS, null, null, null)) {
+        try (Cursor cursor = resolver.query(rootChildrenUri, CHILD_COLUMNS, null, null, null)) {
             if (cursor == null) throw new IOException("The selected folder cannot be read.");
             int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
             int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
