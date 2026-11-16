@@ -16,6 +16,7 @@ if "WowGameFolderImporter.importTree" in text:
 for import_line in [
     "import android.app.ProgressDialog;\n",
     "import android.net.Uri;\n",
+    "import android.widget.Toast;\n",
     "import java.util.concurrent.atomic.AtomicBoolean;\n",
 ]:
     if import_line not in text:
@@ -46,7 +47,7 @@ activity_result = """
         try {
             getContentResolver().takePersistableUriPermission(treeUri, flags);
         } catch (SecurityException error) {
-            AppUtils.showToast(this, "Android could not keep access to that folder.");
+            Toast.makeText(this, "Android could not keep access to that folder.", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -72,12 +73,12 @@ activity_result = """
                     progress.dismiss();
                     preferences.edit().putString(PREF_GAME_FOLDER, imported.getAbsolutePath()).apply();
                     updateStatus();
-                    AppUtils.showToast(this, "WoW client imported successfully.");
+                    Toast.makeText(this, "WoW client imported successfully.", Toast.LENGTH_LONG).show();
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
                     progress.dismiss();
-                    AppUtils.showToast(this, error.getMessage() == null ? "WoW import failed." : error.getMessage());
+                    Toast.makeText(this, error.getMessage() == null ? "WoW import failed." : error.getMessage(), Toast.LENGTH_LONG).show();
                 });
             }
         });
