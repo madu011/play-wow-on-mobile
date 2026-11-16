@@ -1,9 +1,12 @@
 import 'dart:io';
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import 'wow_client_version.dart';
 import 'mpq_checksum_scanner.dart';
+import 'mpq_manifest_manager.dart';
 
 const _inspectorGold = Color(0xFFE2B45D);
 const _inspectorMuted = Color(0xFF9AA8BC);
@@ -64,7 +67,7 @@ class GameFolderReport {
         executableInfo: null,
         dataArchiveCount: 0,
         emptyArchiveFiles: [],
-        missingCoreArchives: const ['common.MPQ', 'common-2.MPQ', 'expansion.MPQ', 'lichking.MPQ'],
+        missingCoreArchives: ['common.MPQ', 'common-2.MPQ', 'expansion.MPQ', 'lichking.MPQ'],
         totalArchiveBytes: 0,
         notes: ['Selected folder is no longer accessible.'],
       );
@@ -443,6 +446,10 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                                   color: _inspectorMuted,
                                   fontSize: 9,
                                   height: 1.35),
+                            ),
+                            MpqManifestManager(
+                              folderPath: widget.folderPath,
+                              report: fingerprints,
                             ),
                           ],
                         );
