@@ -5,10 +5,6 @@ on:
   push:
     branches:
       - runtime/native-engine-import
-    paths:
-      - '.gitmodules'
-      - 'vendor/wow-mobile-engine'
-      - '.github/workflows/native-runtime-build.yml'
 
 permissions:
   contents: read
