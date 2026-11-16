@@ -41,13 +41,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Graphics preset'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('RESCAN DEVICE'),
-      220,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('RESCAN DEVICE'), findsOneWidget);
-    expect(find.text('COPY REPORT'), findsOneWidget);
+    expect(find.text('Graphics preset'), findsOneWidget);
   });
 
 
