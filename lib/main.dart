@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -63,7 +62,7 @@ class _LauncherPageState extends State<LauncherPage> {
   Future<void> _loadSavedGameAccess() async {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
-      if (mounted && uri != null) setState(() => gameTreeUri = uri);
+      if (mounted && uri != null) setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
     } catch (_) {}
   }
 
@@ -71,7 +70,7 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
       if (!mounted || uri == null) return;
-      setState(() => gameTreeUri = uri);
+      setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game folder write access granted.')),
       );
@@ -79,17 +78,6 @@ class _LauncherPageState extends State<LauncherPage> {
       if (profile != null) await applyRealmToGameFolder(profile);
     } on PlatformException catch (error) {
       if (mounted) showInfo('Folder access not granted', error.message ?? 'Please select the WoW game folder.');
-    }
-  }
-
-  Future<void> chooseGameFolder() async {
-    final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select your WoW 3.3.5a folder',
-    );
-    if (result != null && mounted) {
-      setState(() => gameFolder = result);
-      final profile = selectedServer;
-      if (profile != null) await applyRealmToGameFolder(profile);
     }
   }
 
@@ -257,9 +245,9 @@ class _LauncherPageState extends State<LauncherPage> {
                   ),
                   const SizedBox(height: 14),
                   OutlinedButton.icon(
-                    onPressed: chooseGameFolder,
+                    onPressed: _requestGameFolderAccess,
                     icon: const Icon(Icons.drive_folder_upload),
-                    label: const Text('IMPORT GAME FOLDER'),
+                    label: const Text('SELECT WOW GAME FOLDER'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
                       side: const BorderSide(color: gold),
