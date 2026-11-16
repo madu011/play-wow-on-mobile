@@ -743,7 +743,6 @@ class _LauncherPageState extends State<LauncherPage> {
           ],
         ),
       ),
-    ),
         ],
       ),
     );
@@ -973,7 +972,6 @@ class _IcecrownBackgroundPainter extends CustomPainter {
 
     final farPaint = Paint()..color = const Color(0xFF263D59);
     final midPaint = Paint()..color = const Color(0xFF172A43);
-    final nearPaint = Paint()..color = const Color(0xFF0B1422);
     final ridge = Path()
       ..moveTo(0, size.height * .56)
       ..lineTo(size.width * .13, size.height * .39)
@@ -988,6 +986,17 @@ class _IcecrownBackgroundPainter extends CustomPainter {
       ..lineTo(0, size.height)
       ..close();
     canvas.drawPath(ridge, farPaint);
+    final foreground = Path()
+      ..moveTo(0, size.height * .72)
+      ..lineTo(size.width * .18, size.height * .60)
+      ..lineTo(size.width * .35, size.height * .70)
+      ..lineTo(size.width * .55, size.height * .57)
+      ..lineTo(size.width * .75, size.height * .69)
+      ..lineTo(size.width, size.height * .59)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(foreground, Paint()..color = const Color(0xFF0B1422));
 
     final towers = <(double, double, double)>[
       (.08, .50, .20), (.24, .39, .27), (.76, .42, .25),
