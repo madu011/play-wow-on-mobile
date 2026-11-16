@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'server_manager.dart';
 import 'game_folder_inspector.dart';
@@ -46,6 +47,8 @@ class _LauncherPageState extends State<LauncherPage> {
   ServerProfile? selectedServer;
   bool lowGraphics = true;
   bool showTouchControls = true;
+  bool automaticGraphics = true;
+  bool _preferencesLoaded = false;
   String? gameTreeUri;
   List<String> gameLocales = [];
   String? selectedLocale;
@@ -61,7 +64,45 @@ class _LauncherPageState extends State<LauncherPage> {
   void initState() {
     super.initState();
     _loadSavedGameAccess();
-    _detectDevice();
+    _initializePreferences();
+  }
+
+  Future<void> _initializePreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        automaticGraphics = prefs.getBool('automatic_graphics') ?? true;
+        lowGraphics = prefs.getBool('low_graphics') ?? true;
+        showTouchControls = prefs.getBool('show_touch_controls') ?? true;
+        _preferencesLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _preferencesLoaded = true);
+    }
+    await _detectDevice();
+  }
+
+  Future<void> _savePerformanceSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('automatic_graphics', automaticGraphics);
+      await prefs.setBool('low_graphics', lowGraphics);
+      await prefs.setBool('show_touch_controls', showTouchControls);
+    } catch (_) {
+      if (mounted) {
+        showInfo('Settings not saved',
+            'The preferences could not be saved on this device. Your current selections remain active until the app closes.');
+      }
+    }
+  }
+
+  void _applyAutomaticGraphicsRecommendation() {
+    final estimate = _devicePerformanceEstimate(deviceInfo);
+    final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+    setState(() {
+      lowGraphics = score < 82;
+    });
   }
 
   Future<void> _detectDevice() async {
@@ -71,10 +112,12 @@ class _LauncherPageState extends State<LauncherPage> {
       setState(() {
         deviceInfo = info;
         deviceScanComplete = true;
-        final ramMb = (info['totalRamMb'] as num?)?.toInt() ?? 0;
-        final cores = (info['cpuCores'] as num?)?.toInt() ?? 0;
-        // Conservative UI recommendation only; the game runtime is not integrated yet.
-        lowGraphics = ramMb < 6000 || cores <= 6;
+        // Auto mode selects a conservative starting toggle from the estimated profile.
+        if (automaticGraphics) {
+          final estimate = _devicePerformanceEstimate(info);
+          final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+          lowGraphics = score < 82;
+        }
       });
     } catch (error) {
       if (!mounted) return;
@@ -468,11 +511,38 @@ class _LauncherPageState extends State<LauncherPage> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: gold,
-                    title: const Text('Low graphics mode'),
-                    subtitle: const Text('Recommended for initial testing',
+                    title: const Text('Automatic graphics profile'),
+                    subtitle: const Text('Choose a starting profile from detected hardware',
                         style: TextStyle(color: muted, fontSize: 11)),
+                    value: automaticGraphics,
+                    onChanged: (v) {
+                      setState(() {
+                        automaticGraphics = v;
+                        if (v && deviceScanComplete) {
+                          final estimate = _devicePerformanceEstimate(deviceInfo);
+                          final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+                          lowGraphics = score < 82;
+                        }
+                      });
+                      _savePerformanceSettings();
+                    },
+                  ),
+                  const Divider(color: Color(0xFF293448)),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: gold,
+                    title: const Text('Low graphics mode'),
+                    subtitle: Text(
+                      automaticGraphics
+                          ? 'Controlled by automatic profile; turn it off to edit manually'
+                          : 'Manual override enabled',
+                      style: const TextStyle(color: muted, fontSize: 11),
+                    ),
                     value: lowGraphics,
-                    onChanged: (v) => setState(() => lowGraphics = v),
+                    onChanged: automaticGraphics ? null : (v) {
+                      setState(() => lowGraphics = v);
+                      _savePerformanceSettings();
+                    },
                   ),
                   const Divider(color: Color(0xFF293448)),
                   SwitchListTile(
@@ -482,7 +552,29 @@ class _LauncherPageState extends State<LauncherPage> {
                     subtitle: const Text('Virtual buttons and movement controls',
                         style: TextStyle(color: muted, fontSize: 11)),
                     value: showTouchControls,
-                    onChanged: (v) => setState(() => showTouchControls = v),
+                    onChanged: (v) {
+                      setState(() => showTouchControls = v);
+                      _savePerformanceSettings();
+                    },
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          automaticGraphics = true;
+                          if (deviceScanComplete) {
+                            final estimate = _devicePerformanceEstimate(deviceInfo);
+                            final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
+                            lowGraphics = score < 82;
+                          }
+                          showTouchControls = true;
+                        });
+                        _savePerformanceSettings();
+                      },
+                      icon: const Icon(Icons.restart_alt, size: 18),
+                      label: const Text('Restore recommended settings'),
+                    ),
                   ),
                 ],
               ),
