@@ -55,3 +55,12 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - The native engine is pinned to upstream commit `0c8068f617737d9c0fb6246f37b54f85b620b09d`.
 - This explains why the root README can describe the Flutter companion launcher while a separate CI workflow produces a native runtime APK. They are separate build targets, not proof that both have been integrated into one APK.
 - Next inspection: branding script, submodule tree, and root Flutter navigation/import/realm flows. Then choose and implement a clearly defined integration boundary without replacing either working build path.
+
+
+## 2026-11-16 existing-feature audit
+- Root Flutter app already has an Android Storage Access Framework (SAF) folder-tree picker in `MainActivity.kt`, requests persistable read/write permissions, remembers the selected tree URI, scans the selected tree, and can write `Data/<locale>/realmlist.wtf`.
+- Root Flutter app already has a Realm Manager in `lib/server_manager.dart`: saved profiles, add/remove, import/export JSON backups, parsing realmlist text, and DNS/TCP diagnostics. Do not rebuild these features from scratch.
+- The root Flutter game-folder inspector can inspect document-tree selections through the Android method channel, while its MPQ SHA-256 scanner is separately filesystem-path based. Document-provider streaming hash support remains a known limitation.
+- The native engine launcher is a separate Android app inside the pinned submodule. Its game-folder selection and realm settings are not yet connected to the root Flutter SAF picker or Realm Manager.
+- The branding script currently changes native app label/subtitle and theme palette. It does not yet implement the complete launcher redesign or a custom WOW LK launcher icon.
+- Therefore the next integration milestone must bridge the already-existing Flutter SAF/realm configuration to the native runtime (or implement equivalent supported storage/profile behavior in the native launcher). Merely improving the Flutter UI will not make the native engine use the selected game folder.
