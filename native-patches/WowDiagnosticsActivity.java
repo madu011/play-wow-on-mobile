@@ -156,19 +156,19 @@ public class WowDiagnosticsActivity extends Activity {
 
     /** Lists Android input devices and their advertised sources for hardware troubleshooting. */
     private void appendInputDevices(StringBuilder out) {
-        out.append("\\nINPUT DEVICES\\n");
+        out.append("\nINPUT DEVICES\n");
         int[] ids = InputDevice.getDeviceIds();
         if (ids == null || ids.length == 0) {
-            out.append("No Android input devices reported.\\n");
+            out.append("No Android input devices reported.\n");
             return;
         }
         for (int id : ids) {
             InputDevice device = InputDevice.getDevice(id);
             if (device == null) continue;
             out.append("Device: ").append(safe(device.getName()))
-                    .append(" (id ").append(id).append(")\\n");
+                    .append(" (id ").append(id).append(")\n");
             out.append("  Type: ").append(device.isVirtual() ? "Virtual" : "Physical / built-in")
-                    .append("; keyboard type: ").append(keyboardType(device.getKeyboardType())).append("\\n");
+                    .append("; keyboard type: ").append(keyboardType(device.getKeyboardType())).append("\n");
             out.append("  Sources:");
             boolean any = false;
             if (device.supportsSource(InputDevice.SOURCE_KEYBOARD)) { out.append(" KEYBOARD"); any = true; }
@@ -176,7 +176,7 @@ public class WowDiagnosticsActivity extends Activity {
             if (device.supportsSource(InputDevice.SOURCE_GAMEPAD)) { out.append(" GAMEPAD"); any = true; }
             if (device.supportsSource(InputDevice.SOURCE_JOYSTICK)) { out.append(" JOYSTICK"); any = true; }
             if (!any) out.append(" other");
-            out.append("\\n");
+            out.append("\n");
         }
     }
 
