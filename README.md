@@ -13,6 +13,18 @@ The launcher includes a **Server Manager** for saving multiple WotLK realmlist e
 
 Profiles are stored locally on the Android device using shared preferences.
 
+### Realm backup: import and export
+
+Use the **IMPORT** and **EXPORT** controls in Server Manager to move saved realm profiles between devices.
+
+- **Export** creates a versioned JSON backup named `azeroth-realms-backup.json`.
+- **Import** reads a JSON backup selected through Android's file picker.
+- Imported entries are validated before saving. Unsupported formats and invalid host/port values are rejected.
+- Existing profiles are preserved; duplicate host-and-port entries in the backup are skipped.
+- The selected active realm is not changed by importing a backup.
+
+Keep the backup file somewhere private because it contains the server addresses you saved. It does not contain account passwords or game login details.
+
 ### What the realmlist can and cannot tell us
 
 A WotLK realmlist entry identifies the authentication/logon endpoint. If no port is supplied, the launcher assumes the common WotLK auth port `3724`. The realmlist alone does **not** guarantee the server's client build, realm world address, world port, or compatibility. Those are supplied by the server's realm list and must be supported by the game client/runtime. Each saved profile also has a TCP reachability check for its auth host and port; a successful TCP check only confirms that a connection can be opened, not that WoW authentication or gameplay will work.
