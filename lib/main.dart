@@ -106,7 +106,7 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final written = await _storageChannel.invokeMethod<bool>(
         'writeRealmlist',
-        {'treeUri': treeUri, 'content': '${profile.realmlistLine}\\n'},
+        {'treeUri': treeUri, 'content': '${profile.realmlistLine}\n'},
       );
       if (!mounted) return;
       if (written == true) {
