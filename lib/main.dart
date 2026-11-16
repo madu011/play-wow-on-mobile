@@ -551,7 +551,7 @@ class _LauncherPageState extends State<LauncherPage> {
                       setState(() {
                         graphicsPreset = value;
                         automaticGraphics = value == 'Auto';
-                        if (value != 'Auto') lowGraphics = value == 'Low' || value == 'Low–Medium';
+                        if (value != 'Auto') {\n                          lowGraphics = value == 'Low' || value == 'Low–Medium';\n                        }
                         else {
                           final score = int.tryParse((_devicePerformanceEstimate(deviceInfo)['score'] ?? '').split('/').first) ?? 0;
                           lowGraphics = score < 82;
