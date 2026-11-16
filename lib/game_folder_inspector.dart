@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'wow_client_version.dart';
+import 'mpq_checksum_scanner.dart';
 
 const _inspectorGold = Color(0xFFE2B45D);
 const _inspectorMuted = Color(0xFF9AA8BC);
@@ -176,6 +177,7 @@ class GameFolderInspector extends StatefulWidget {
 
 class _GameFolderInspectorState extends State<GameFolderInspector> {
   late Future<GameFolderReport> _report;
+  Future<MpqFingerprintReport>? _checksumFuture;
 
   @override
   void initState() {
@@ -188,6 +190,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.folderPath != widget.folderPath) {
       _report = GameFolderReport.inspect(widget.folderPath);
+      _checksumFuture = null;
     }
   }
 
@@ -344,6 +347,107 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                     style: TextStyle(
                         color: _inspectorMuted, fontSize: 9, height: 1.35),
                   ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _checksumFuture = MpqChecksumScanner.scan(
+                            '${widget.folderPath}/Data',
+                          );
+                        });
+                      },
+                      icon: const Icon(Icons.fingerprint, size: 16),
+                      label: const Text('CALCULATE SHA-256 FINGERPRINTS'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _inspectorGold,
+                        side: const BorderSide(color: Color(0xFF66522E)),
+                        textStyle: const TextStyle(
+                            fontSize: 9, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                  if (_checksumFuture != null)
+                    FutureBuilder<MpqFingerprintReport>(
+                      future: _checksumFuture,
+                      builder: (context, checksumSnapshot) {
+                        if (checksumSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Calculating fingerprints...',
+                                    style: TextStyle(
+                                        color: _inspectorMuted, fontSize: 10)),
+                              ],
+                            ),
+                          );
+                        }
+                        if (checksumSnapshot.hasError ||
+                            !checksumSnapshot.hasData) {
+                          return const Text(
+                            'Could not calculate fingerprints. Check file access.',
+                            style: TextStyle(
+                                color: Colors.orangeAccent, fontSize: 10),
+                          );
+                        }
+                        final fingerprints = checksumSnapshot.data!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 7),
+                            Text(
+                              '${fingerprints.successCount} hashed · ${fingerprints.errorCount} errors',
+                              style: const TextStyle(
+                                  color: _inspectorGold,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                            ...fingerprints.files.map((fingerprint) =>
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 7),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        fingerprint.relativePath,
+                                        style: const TextStyle(
+                                            color: _inspectorMuted,
+                                            fontSize: 9),
+                                      ),
+                                      SelectableText(
+                                        fingerprint.sha256 ??
+                                            'Error: ${fingerprint.error}',
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 9,
+                                            fontFamily: 'monospace'),
+                                      ),
+                                    ],
+                                  ),
+                                )),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'These are fingerprints of the current files. They only confirm integrity when compared with a trusted checksum from the same client release.',
+                              style: TextStyle(
+                                  color: _inspectorMuted,
+                                  fontSize: 9,
+                                  height: 1.35),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   const SizedBox(height: 9),
                   ...report.notes.map((note) => Padding(
                         padding: const EdgeInsets.only(top: 4),
