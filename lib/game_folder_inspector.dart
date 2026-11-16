@@ -181,6 +181,33 @@ class GameFolderInspector extends StatefulWidget {
 class _GameFolderInspectorState extends State<GameFolderInspector> {
   late Future<GameFolderReport> _report;
   Future<MpqFingerprintReport>? _checksumFuture;
+  MpqScanProgress? _scanProgress;
+  MpqScanCancellation? _scanCancellation;
+  bool _isChecksumScanning = false;
+
+  void _startChecksumScan() {
+    final cancellation = MpqScanCancellation();
+    setState(() {
+      _scanProgress = null;
+      _scanCancellation = cancellation;
+      _isChecksumScanning = true;
+      _checksumFuture = MpqChecksumScanner.scan(
+        '${widget.folderPath}/Data',
+        cancellation: cancellation,
+        onProgress: (progress) {
+          if (mounted) setState(() => _scanProgress = progress);
+        },
+      );
+    });
+    _checksumFuture!.then<void>(
+      (_) {
+        if (mounted) setState(() => _isChecksumScanning = false);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (mounted) setState(() => _isChecksumScanning = false);
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -194,13 +221,20 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
     if (oldWidget.folderPath != widget.folderPath) {
       _report = GameFolderReport.inspect(widget.folderPath);
       _checksumFuture = null;
+      _scanProgress = null;
+      _scanCancellation = null;
+      _isChecksumScanning = false;
     }
   }
 
   void _refresh() {
+    _scanCancellation?.cancel();
     setState(() {
       _report = GameFolderReport.inspect(widget.folderPath);
       _checksumFuture = null;
+      _scanProgress = null;
+      _scanCancellation = null;
+      _isChecksumScanning = false;
     });
   }
 
@@ -357,13 +391,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _checksumFuture = MpqChecksumScanner.scan(
-                            '${widget.folderPath}/Data',
-                          );
-                        });
-                      },
+                      onPressed: _isChecksumScanning ? null : _startChecksumScan,
                       icon: const Icon(Icons.fingerprint, size: 16),
                       label: const Text('CALCULATE SHA-256 FINGERPRINTS'),
                       style: OutlinedButton.styleFrom(
@@ -380,20 +408,80 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                       builder: (context, checksumSnapshot) {
                         if (checksumSnapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: Row(
+                          final progress = _scanProgress;
+                          final fraction = progress?.fraction;
+                          final percent =
+                              fraction == null ? 0 : (fraction * 100).round();
+                          final cancellationRequested =
+                              _scanCancellation?.isCancelled ?? false;
+                          return Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        progress == null
+                                            ? 'Finding MPQ archives...'
+                                            : 'Hashing $percent% · ${progress.completedFiles}/${progress.totalFiles} files',
+                                        style: const TextStyle(
+                                            color: _inspectorMuted,
+                                            fontSize: 10),
+                                      ),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: cancellationRequested
+                                          ? null
+                                          : () => _scanCancellation?.cancel(),
+                                      icon: const Icon(Icons.stop, size: 14),
+                                      label: Text(cancellationRequested
+                                          ? 'STOPPING'
+                                          : 'CANCEL'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.orangeAccent,
+                                        textStyle: const TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(width: 8),
-                                Text('Calculating fingerprints...',
-                                    style: TextStyle(
-                                        color: _inspectorMuted, fontSize: 10)),
+                                const SizedBox(height: 6),
+                                LinearProgressIndicator(
+                                  value: fraction,
+                                  minHeight: 5,
+                                  backgroundColor: const Color(0xFF263448),
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                          _inspectorGold),
+                                ),
+                                if (progress?.currentFile != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 5),
+                                    child: Text(
+                                      progress!.currentFile!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: _inspectorMuted,
+                                          fontSize: 9),
+                                    ),
+                                  ),
+                                const Text(
+                                  'Cancel takes effect after the current archive finishes hashing.',
+                                  style: TextStyle(
+                                      color: _inspectorMuted,
+                                      fontSize: 9),
+                                ),
                               ],
                             ),
                           );
@@ -417,6 +505,14 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                                   color: _inspectorGold,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '${fingerprints.cancelled ? "Cancelled" : "Completed"} · ${fingerprints.completedFileCount}/${fingerprints.discoveredFileCount} files · ${_formatBytes(fingerprints.totalBytes)} · ${(fingerprints.duration.inMilliseconds / 1000).toStringAsFixed(1)} sec',
+                                style: const TextStyle(
+                                    color: _inspectorMuted, fontSize: 9),
+                              ),
                             ),
                             ...fingerprints.files.map((fingerprint) =>
                                 Padding(
