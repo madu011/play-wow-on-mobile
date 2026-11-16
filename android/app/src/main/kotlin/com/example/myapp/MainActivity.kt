@@ -3,6 +3,11 @@ package com.example.myapp
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.app.ActivityManager
+import android.content.Context
+import android.os.Build
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import android.provider.DocumentsContract
 import android.database.Cursor
 import io.flutter.embedding.android.FlutterActivity
@@ -39,7 +44,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
-                when (call.method) {
+                when (call.method) {\n                    "getDeviceInfo" -> result.success(getDeviceInfo())
                     "pickGameFolderTree" -> {
                         if (pendingPickerResult != null) {
                             result.error("PICKER_BUSY", "Folder picker is already open.", null)
@@ -71,6 +76,35 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun getDeviceInfo(): Map<String, Any> {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memory = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memory)
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
+        val packageManager = packageManager
+        val hasVulkan = packageManager.hasSystemFeature("android.hardware.vulkan.level") ||
+            packageManager.hasSystemFeature("android.hardware.vulkan.version")
+        val gles = packageManager.getSystemAvailableFeatures()
+            .firstOrNull { it.name == null }?.reqGlEsVersion ?: 0
+        return mapOf(
+            "manufacturer" to Build.MANUFACTURER,
+            "brand" to Build.BRAND,
+            "model" to Build.MODEL,
+            "device" to Build.DEVICE,
+            "androidVersion" to Build.VERSION.RELEASE,
+            "sdkInt" to Build.VERSION.SDK_INT,
+            "cpuCores" to Runtime.getRuntime().availableProcessors(),
+            "supportedAbis" to Build.SUPPORTED_ABIS.toList(),
+            "totalRamMb" to (memory.totalMem / (1024L * 1024L)).toInt(),
+            "availableRamMb" to (memory.availMem / (1024L * 1024L)).toInt(),
+            "screenResolution" to "${metrics.widthPixels} × ${metrics.heightPixels}",
+            "densityDpi" to metrics.densityDpi,
+            "graphicsApi" to if (hasVulkan) "Vulkan feature + OpenGL ES ${gles.toString(16)}" else "OpenGL ES ${gles.toString(16)} (Vulkan not reported)"
+        )
     }
 
     private data class Entry(val uri: Uri, val name: String, val mime: String, val size: Long)
@@ -116,7 +150,7 @@ class MainActivity : FlutterActivity() {
                 for (entry in children(parent)) {
                     val relative = if (prefix.isEmpty()) entry.name else "$prefix/${entry.name}"
                     if (entry.mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        if (prefix.isEmpty() && entry.name.length == 4 && entry.name.substring(0,2).all { it.isLetter() } &&
+                        if (prefix.isEmpty() && entry.name.length == 4 && entry.name.substring(0,2).all { it.isLetter() && it.isLowerCase() } &&
                             entry.name.substring(2).all { it.isLetter() } && entry.name.substring(2).all { it.isUpperCase() }) {
                             locales.add(entry.name)
                         }
