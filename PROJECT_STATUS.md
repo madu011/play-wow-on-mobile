@@ -197,3 +197,12 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Manual container settings remain available. Auto configuration is an opt-in reset of the listed container settings and should be run again only when the user wants to replace manual values.
 - The profile is a compatibility-first starting point, not a measured optimum. The DXVK path is selected only when Android reports Vulkan support; otherwise the tuner selects WineD3D. Physical-device build/install/gameplay testing is still required.
 - CI validation is pending for the commit containing these changes. No device gameplay result is claimed.
+
+## 2026-11-16 — Link the original WoW client in place (no duplicate copy)
+- Replaced the previous SAF importer implementation with direct-folder resolution and validation. It no longer stages, copies, extracts, backs up, or duplicates WoW client files.
+- The selected folder must be on a directly accessible Android shared-storage volume and contain readable Wow.exe plus a non-empty Data/ directory. Unsupported cloud/document providers are rejected with a clear explanation because Winlator cannot mount a content:// URI as a normal Wine filesystem drive without copying.
+- The original absolute folder path is saved as the selected game path and mapped to the WoW container F: drive. Newly launched game shortcuts therefore point to the original client location.
+- The launcher requests Android shared-storage read permission before linking the folder. The SAF tree permission is retained for locale discovery and direct realmlist updates.
+- Updated the Flutter UI to say LINK ORIGINAL WOW GAME FOLDER and explain that files remain in their existing location. Removed the copy-progress/cancel UI.
+- The previous import-oriented storage keys and method names remain for compatibility, but their value now represents the linked original folder path, not an imported copy.
+- Validation is limited to folder accessibility, Wow.exe, and Data/ contents; it does not hash/verify every patch archive. No file duplication is performed. Device testing is still required to confirm the original path is readable by the Wine runtime on Android.
