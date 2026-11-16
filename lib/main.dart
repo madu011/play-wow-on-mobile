@@ -100,6 +100,11 @@ class _LauncherPageState extends State<LauncherPage> {
   int selectedNavTab = 0;
   Map<String, dynamic> deviceInfo = {};
   bool deviceScanComplete = false;
+  bool gameImporting = false;
+  bool gameImportCancelling = false;
+  int gameImportCopiedBytes = 0;
+  int gameImportTotalBytes = 0;
+  String gameImportCurrentPath = 'Preparing game folder...';
   final GlobalKey _gameSectionKey = GlobalKey();
   final GlobalKey _serverSectionKey = GlobalKey();
   final GlobalKey _toolsSectionKey = GlobalKey();
@@ -108,6 +113,7 @@ class _LauncherPageState extends State<LauncherPage> {
   @override
   void initState() {
     super.initState();
+    _storageChannel.setMethodCallHandler(_handleStorageMethodCall);
     _loadSavedGameAccess();
     _initializePreferences();
   }
@@ -285,11 +291,52 @@ class _LauncherPageState extends State<LauncherPage> {
     return 'Generic • OpenGL ES compatibility profile';
   }
 
+  Future<dynamic> _handleStorageMethodCall(MethodCall call) async {
+    if (call.method == 'gameImportStarted' || call.method == 'gameImportProgress') {
+      final data = Map<String, dynamic>.from(call.arguments as Map? ?? const {});
+      if (!mounted) return null;
+      setState(() {
+        gameImporting = true;
+        gameImportCancelling = false;
+        gameImportCurrentPath = (data['currentPath'] ?? 'Preparing game folder...').toString();
+        gameImportCopiedBytes = (data['copiedBytes'] as num?)?.toInt() ?? 0;
+        gameImportTotalBytes = (data['totalBytes'] as num?)?.toInt() ?? 0;
+      });
+    } else if (call.method == 'gameImportFinished') {
+      final data = Map<String, dynamic>.from(call.arguments as Map? ?? const {});
+      if (!mounted) return null;
+      setState(() {
+        gameImporting = false;
+        gameImportCancelling = false;
+        if (data['success'] == true && data['importedPath'] != null) {
+          gameFolder = data['importedPath'].toString();
+        }
+      });
+    }
+    return null;
+  }
+
+  Future<void> _cancelGameImport() async {
+    if (!gameImporting || gameImportCancelling) return;
+    setState(() => gameImportCancelling = true);
+    try {
+      await _storageChannel.invokeMethod<bool>('cancelGameImport');
+    } on PlatformException catch (error) {
+      if (mounted) showInfo('Could not cancel import', error.message ?? 'Please wait for the current file operation to finish.');
+    }
+  }
+
+  String _formatImportBytes(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   Future<void> _loadSavedGameAccess() async {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
+      final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
       if (mounted && uri != null) {
-        setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
+        setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Imported WoW folder'; });
         await _refreshGameLocales();
       }
     } catch (_) {}
@@ -299,7 +346,8 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
       if (!mounted || uri == null) return;
-      setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; selectedLocale = null; });
+      final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
+      setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Imported WoW folder'; selectedLocale = null; gameImporting = false; gameImportCancelling = false; });
       await _refreshGameLocales();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,6 +356,7 @@ class _LauncherPageState extends State<LauncherPage> {
       final profile = selectedServer;
       if (profile != null) await applyRealmToGameFolder(profile);
     } on PlatformException catch (error) {
+      if (mounted) setState(() { gameImporting = false; gameImportCancelling = false; });
       if (mounted) showInfo('Folder access not granted', error.message ?? 'Please select the WoW game folder.');
     }
   }
@@ -538,6 +587,59 @@ class _LauncherPageState extends State<LauncherPage> {
                     style: const TextStyle(color: muted, fontSize: 12),
                   ),
                   const SizedBox(height: 14),
+                  if (gameImporting) ...[
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Icon(Icons.downloading, color: gold, size: 18),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text('IMPORTING WOW CLIENT',
+                              style: TextStyle(color: gold, fontWeight: FontWeight.bold, fontSize: 11)),
+                        ),
+                        Text(
+                          gameImportTotalBytes > 0
+                              ? '${(gameImportCopiedBytes * 100 / gameImportTotalBytes).clamp(0, 100).toStringAsFixed(0)}%'
+                              : '...',
+                          style: const TextStyle(color: gold, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: gameImportTotalBytes > 0
+                          ? (gameImportCopiedBytes / gameImportTotalBytes).clamp(0.0, 1.0)
+                          : null,
+                      minHeight: 7,
+                      backgroundColor: const Color(0xFF30394A),
+                      color: gold,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      gameImportCurrentPath,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: muted, fontSize: 10),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      gameImportTotalBytes > 0
+                          ? '${_formatImportBytes(gameImportCopiedBytes)} / ${_formatImportBytes(gameImportTotalBytes)}'
+                          : '${_formatImportBytes(gameImportCopiedBytes)} copied',
+                      style: const TextStyle(color: muted, fontSize: 10),
+                    ),
+                    const SizedBox(height: 9),
+                    OutlinedButton.icon(
+                      onPressed: gameImportCancelling ? null : _cancelGameImport,
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: Text(gameImportCancelling ? 'CANCELLING...' : 'CANCEL IMPORT'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orangeAccent,
+                        side: const BorderSide(color: Colors.orangeAccent),
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                    ),
+                  ],
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
                     icon: const Icon(Icons.drive_folder_upload),

@@ -165,3 +165,11 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - The selected SAF tree URI is retained across launches. Realm writes are applied to the selected source tree and mirrored into the imported app-owned game folder so the native Winlator F: drive uses the same selected realm.
 - Import errors are returned to Flutter as a typed platform error; the native launcher will not be marked ready when the import fails.
 - CI compilation is required before this phase can be considered build-verified. Physical-device validation remains required for large client import duration, available-storage checks, document-provider compatibility, process recreation, and verifying that the game launches using the selected realm.
+
+
+## 2026-11-16 game import progress and cancellation bridge
+- Added native-to-Flutter progress events for the SAF game-folder import, reporting the current relative file path and copied/total byte counts. Progress events are throttled to avoid flooding the platform channel.
+- Added a visible import progress bar with percentage when provider file sizes are available, indeterminate progress otherwise, copied-byte totals, and a Cancel Import action.
+- Added native cancellation via the importer's existing cancellation flag. Cancelling stops the copy at the next file-buffer boundary and the staged temporary import is cleaned up; the existing imported game remains preserved.
+- Added a native method to return the app-owned imported game path after relaunch, so the Flutter game-folder inspector receives the actual imported filesystem path instead of a placeholder label.
+- The updated APK must pass CI build and signature verification before being offered for device testing. Device testing remains necessary for real SAF providers, import progress, cancellation, and launch.

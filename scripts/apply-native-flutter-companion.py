@@ -114,12 +114,15 @@ public class WowLKCompanionActivity extends FlutterActivity {
     private static final String CHANNEL = "wow.lk/storage";
     private static final int REQUEST_GAME_TREE = 4019;
     private MethodChannel.Result pendingFolderResult;
+    private AtomicBoolean importCancelled;
+    private MethodChannel storageChannel;
     private final java.util.concurrent.ExecutorService importerExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
         MethodChannel channel = new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL);
+        storageChannel = channel;
         channel.setMethodCallHandler((call, result) -> {
             switch (call.method) {
                 case "openNativeGameLauncher":
@@ -141,6 +144,13 @@ public class WowLKCompanionActivity extends FlutterActivity {
                     Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
                     picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                     startActivityForResult(picker, REQUEST_GAME_TREE);
+                    break;
+                case "cancelGameImport":
+                    if (importCancelled != null) importCancelled.set(true);
+                    result.success(importCancelled != null);
+                    break;
+                case "getImportedGamePath":
+                    result.success(getCompanionPreferences().getString("imported_game_path", null));
                     break;
                 case "scanGameTree":
                     result.success(scanGameTree(call.argument("treeUri")));
@@ -172,23 +182,52 @@ public class WowLKCompanionActivity extends FlutterActivity {
             callback.error("TREE_PERMISSION", "Android could not retain access to the selected folder.", error.getMessage());
             return;
         }
+        importCancelled = new AtomicBoolean(false);
+        final AtomicBoolean cancellation = importCancelled;
+        runOnUiThread(() -> storageChannel.invokeMethod("gameImportStarted",
+            new HashMap<String, Object>() {{ put("currentPath", "Preparing game folder..."); put("copiedBytes", 0L); put("totalBytes", 0L); }}));
         importerExecutor.execute(() -> {
             try {
-                File imported = WowGameFolderImporter.importTree(this, treeUri, new AtomicBoolean(false), null);
+                final java.util.concurrent.atomic.AtomicLong lastProgress = new java.util.concurrent.atomic.AtomicLong(0L);
+                File imported = WowGameFolderImporter.importTree(this, treeUri, cancellation,
+                    (path, copied, total) -> {
+                        long previous = lastProgress.get();
+                        if (copied - previous < 8L * 1024L * 1024L && (total <= 0L || copied < total)) return;
+                        if (!lastProgress.compareAndSet(previous, copied)) return;
+                        Map<String, Object> progress = new HashMap<>();
+                        progress.put("currentPath", path);
+                        progress.put("copiedBytes", copied);
+                        progress.put("totalBytes", total);
+                        runOnUiThread(() -> storageChannel.invokeMethod("gameImportProgress", progress));
+                    });
                 getCompanionPreferences().edit().putString("game_tree_uri", treeUri.toString())
                     .putString("imported_game_path", imported.getAbsolutePath()).apply();
                 PreferenceManager.getDefaultSharedPreferences(this).edit()
                     .putString(WowMobileActivity.PREF_GAME_FOLDER, imported.getAbsolutePath()).apply();
-                runOnUiThread(() -> callback.success(treeUri.toString()));
+                Map<String, Object> finished = new HashMap<>();
+                finished.put("success", true);
+                finished.put("importedPath", imported.getAbsolutePath());
+                runOnUiThread(() -> {
+                    storageChannel.invokeMethod("gameImportFinished", finished);
+                    callback.success(treeUri.toString());
+                });
             } catch (Exception error) {
-                runOnUiThread(() -> callback.error("GAME_IMPORT_FAILED",
-                    error.getMessage() == null ? "The selected WoW folder could not be imported." : error.getMessage(), null));
+                Map<String, Object> finished = new HashMap<>();
+                finished.put("success", false);
+                finished.put("message", error.getMessage() == null ? "The selected WoW folder could not be imported." : error.getMessage());
+                runOnUiThread(() -> {
+                    storageChannel.invokeMethod("gameImportFinished", finished);
+                    callback.error("GAME_IMPORT_FAILED", finished.get("message").toString(), null);
+                });
+            } finally {
+                importCancelled = null;
             }
         });
     }
 
     @Override
     protected void onDestroy() {
+        if (importCancelled != null) importCancelled.set(true);
         if (pendingFolderResult != null) {
             pendingFolderResult.error("ACTIVITY_CLOSED", "The launcher closed before folder import completed.", null);
             pendingFolderResult = null;
