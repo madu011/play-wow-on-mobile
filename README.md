@@ -43,7 +43,7 @@ The project aims to make managing a WotLK 3.3.5a client on Android easier, espec
 | MPQ SHA-256 scanner | On filesystem-accessible folders, streams MPQ files and calculates SHA-256 fingerprints |
 | Checksum baseline library | Saves named, user-created local snapshots and compares later fingerprints; JSON import/export is supported in the filesystem scanner flow |
 | MPQ scan history | Keeps recent scan summaries and limited detailed fingerprint history locally, with scan-to-scan comparison |
-| Basic options | Includes low-graphics and touch-control preference switches in the launcher UI |
+| Graphics configuration | Saves Auto, Low, Low–Medium, Medium, and High starting presets; recommendations are based on detected device information and are not applied to the Windows game runtime |\n| Device diagnostics | Shows detected hardware and graphics details, allows a device rescan, and copies a diagnostic report to the clipboard |\n| Touch controls preference | Saves the touch-control overlay preference in local app settings |
 
 Features depend on Android version, device, and the storage provider used to select the folder. See [Android storage access](#android-storage-access) and [What it does not do yet](#what-it-does-not-do-yet).
 
@@ -163,7 +163,7 @@ A TCP connection is not the same as a successful WoW login. Authentication, real
 
 ### OPTIONS — local preferences
 
-The current launcher contains basic low-graphics and touch-control preference switches. These are UI preferences in this prototype; they do not install a graphics driver or make the Windows client run on Android.
+The current launcher includes saved graphics presets (Auto, Low, Low–Medium, Medium, and High), automatic device-based starting recommendations, a touch-control preference, and a device diagnostics report that can be copied to the clipboard. These are launcher-side preferences and recommendations only; they are not applied to the Windows game and do not install a graphics driver or make the Windows client run on Android.
 
 ## 📂 Android storage access
 
