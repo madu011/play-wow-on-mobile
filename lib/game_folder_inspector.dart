@@ -267,7 +267,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.folderPath != widget.folderPath || oldWidget.treeUri != widget.treeUri) {
       _scanCancellation?.cancel();
-      _report = GameFolderReport.inspect(widget.folderPath);
+      _report = GameFolderReport.inspect(widget.folderPath, treeUri: widget.treeUri);
       _checksumFuture = null;
       _scanProgress = null;
       _scanCancellation = null;
