@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'server_manager.dart';
+
 void main() => runApp(const AzerothApp());
 
 const bg = Color(0xFF090D16);
@@ -38,15 +40,9 @@ class LauncherPage extends StatefulWidget {
 
 class _LauncherPageState extends State<LauncherPage> {
   String? gameFolder;
-  final serverController = TextEditingController();
+  ServerProfile? selectedServer;
   bool lowGraphics = true;
   bool showTouchControls = true;
-
-  @override
-  void dispose() {
-    serverController.dispose();
-    super.dispose();
-  }
 
   Future<void> chooseGameFolder() async {
     final result = await FilePicker.platform.getDirectoryPath(
@@ -188,31 +184,11 @@ class _LauncherPageState extends State<LauncherPage> {
               ),
             ),
             const SizedBox(height: 20),
-            _sectionTitle('SERVER'),
-            _panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Realmlist / server address',
-                      style: TextStyle(color: muted, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: serverController,
-                    decoration: InputDecoration(
-                      hintText: 'logon.example-server.com',
-                      filled: true,
-                      fillColor: bg,
-                      prefixIcon: const Icon(Icons.dns, color: gold),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none),
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  const Text('Enter the address provided by your server.',
-                      style: TextStyle(color: muted, fontSize: 11)),
-                ],
-              ),
+            _sectionTitle('SERVER MANAGER'),
+            ServerManagerCard(
+              onServerSelected: (profile) {
+                setState(() => selectedServer = profile);
+              },
             ),
             const SizedBox(height: 20),
             _sectionTitle('PERFORMANCE & CONTROLS'),
@@ -247,7 +223,7 @@ class _LauncherPageState extends State<LauncherPage> {
               child: FilledButton.icon(
                 onPressed: () => showInfo(
                   'Runtime not ready',
-                  'The launcher interface is in place, but the ARM64 Windows compatibility runtime and Mali graphics backend still need to be integrated and tested. This button does not launch WoW yet.',
+                  'The game runtime is not ready yet. Selected realm: ${selectedServer?.name ?? 'None'}. Realmlist: ${selectedServer?.realmlistLine ?? 'Not selected'}. Realm profiles are saved locally, but applying the selected realmlist to the game folder and launching the game still need runtime integration.',
                 ),
                 icon: const Icon(Icons.play_arrow, size: 28),
                 label: const Text('PLAY WORLD OF WARCRAFT',
