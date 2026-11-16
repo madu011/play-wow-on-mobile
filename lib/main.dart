@@ -572,7 +572,7 @@ class _LauncherPageState extends State<LauncherPage> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: Image.asset('assets/wow-lk-dragon.webp', fit: BoxFit.cover),
+                    child: Image.asset('assets/wow-lk-user-supplied.png', fit: BoxFit.cover),
                   ),
                 ),
                 const SizedBox(width: 13),
