@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
@@ -390,7 +391,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
         _comparisonEntryId = merged.length > 1 ? merged[1].id : null;
         _error = null;
       });
-      _notify('Imported \${imported.length} scan(s). History merged successfully.');
+      _notify('Imported ${imported.length} scan(s). History merged successfully.');
     } catch (error) {
       _notify('History import failed: $error');
     }
