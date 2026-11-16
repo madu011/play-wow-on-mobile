@@ -109,3 +109,10 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Workflow: https://github.com/madu011/play-wow-on-mobile/actions/runs/43919075919
 - Artifact remains unsigned. Successful CI compilation does not establish installation, runtime stability, game compatibility, or successful realm connection on a physical Android device.
 - Next device validation: install the APK on a supported Android device, import a valid WoW 3.3.5a folder, launch the client, reproduce the realm-selection disconnect, then collect and review the diagnostics TXT report. Verify whether the app can access useful Wine/Box64/runtime logs; if not, implement explicit runtime log capture before attempting to diagnose the world-server handoff.
+
+
+## 2026-11-16 installable Android test artifact
+- The successful release CI artifact is unsigned because no user-owned release keystore is configured. Do not ask the user to install that unsigned APK.
+- Added a separate `assembleDebug` CI target to produce an APK signed with Android's standard debug key for device testing; the workflow verifies the signature with `apksigner` and uploads it as `wow-lk-debug-test-apk`.
+- This debug-signed build is for testing only. It is not a public release or a replacement for a private release keystore.
+- Awaiting CI confirmation of the debug build and signature verification before sharing it as installable.

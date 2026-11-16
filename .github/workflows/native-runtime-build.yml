@@ -73,3 +73,21 @@ jobs:
           path: vendor/wow-mobile-engine/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Build installable debug test APK
+        working-directory: vendor/wow-mobile-engine
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Verify debug APK signature
+        run: |
+          APK="vendor/wow-mobile-engine/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
+
+      - name: Upload signed debug test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wow-lk-debug-test-apk
+          path: vendor/wow-mobile-engine/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
