@@ -136,12 +136,17 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     });
     ServerProfile? match;
     for (final profile in loaded) {
-      if (profile.key == selected) {
+      if (profile.key == selected || profile.host == selected) {
         match = profile;
         break;
       }
     }
-    if (match != null) widget.onServerSelected(match);
+    if (match != null) {
+      if (selected != match.key) {
+        await prefs.setString(_selectedKey, match.key);
+      }
+      widget.onServerSelected(match);
+    }
   }
 
   Future<void> _saveProfiles() async {
@@ -180,7 +185,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedKey, profile.key);
     if (!mounted) return;
-    setState(() => _selectedHost = profile.host);
+    setState(() => _selectedProfileKey = profile.key);
     widget.onServerSelected(profile);
   }
 
