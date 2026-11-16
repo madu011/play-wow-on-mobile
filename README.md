@@ -3,6 +3,13 @@
 A Flutter launcher prototype for World of Warcraft: Wrath of the Lich King 3.3.5a.
 
 
+
+## WoW executable metadata check
+
+The Game Folder Inspector also examines the selected `Wow.exe` (or `Wow-64.exe`) as a Windows PE file. It reports the PE architecture and optional-header type, then scans the executable for a small set of known WotLK version strings, including the commonly associated `3.3.5.12340` marker.
+
+**Important:** this is a heuristic string scan, not a full Windows VERSIONINFO resource parser or cryptographic verification. A matching marker is only a possible build match; a missing marker means the build is unknown, not necessarily incompatible. It does not prove the client is unmodified, validate game archives, or establish Android runtime/server compatibility. The executable is read only.
+
 ## Game Folder Inspector
 
 After selecting a game folder, the launcher displays a read-only scan of its basic structure:
