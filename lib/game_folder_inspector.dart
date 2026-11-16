@@ -7,6 +7,11 @@ import 'wow_client_version.dart';
 const _inspectorGold = Color(0xFFE2B45D);
 const _inspectorMuted = Color(0xFF9AA8BC);
 
+bool _isLocaleFolder(String value) =>
+    value.length == 4 &&
+    value.substring(0, 2).toLowerCase() == value.substring(0, 2) &&
+    value.substring(2).toUpperCase() == value.substring(2);
+
 class GameFolderReport {
   const GameFolderReport({
     required this.folderExists,
@@ -98,18 +103,32 @@ class GameFolderReport {
     if (dataFolderFound) {
       await for (final entity in data.list(recursive: true, followLinks: false)) {
         if (entity is! File) continue;
-        final name = entity.uri.pathSegments.isEmpty
-            ? entity.path.split(Platform.pathSeparator).last
-            : entity.uri.pathSegments.last;
-        final relativePath = entity.path.startsWith(data.path)
-            ? entity.path.substring(data.path.length).replaceFirst(
-                RegExp(r'^[\\/]'), '')
-            : name;
-        if (name.toLowerCase() == 'realmlist.wtf') {
-          final parts = relativePath.split(RegExp(r'[\\/]'));
-          if (parts.isNotEmpty &&
-              RegExp(r'^[a-zA-Z]{2}[A-Z]{2}
-
+        final relativePath = entity.path.substring(data.path.length)
+            .replaceAll(Platform.pathSeparator, '/')
+            .replaceFirst('/', '');
+        final segments = relativePath.split('/');
+        final name = segments.isEmpty ? relativePath : segments.last;
+        if (name.toLowerCase() == 'realmlist.wtf' &&
+            segments.length > 1 && _isLocaleFolder(segments.first)) {
+          realmlists.add(relativePath);
+        }
+        if (name.toLowerCase().endsWith('.mpq')) {
+          archives++;
+          dataMpqNames.add(name.toLowerCase());
+          final size = await entity.length();
+          totalArchiveBytes += size;
+          if (size == 0) emptyArchives.add(relativePath);
+        }
+      }
+      await for (final entity in data.list(followLinks: false)) {
+        if (entity is Directory) {
+          final locale = entity.path.split(Platform.pathSeparator).last;
+          if (_isLocaleFolder(locale)) locales.add(locale);
+        }
+      }
+    }
+    final missingCoreArchives =
+        coreArchives.where((name) => !dataMpqNames.contains(name)).toList();
     locales.sort();
     realmlists.sort();
     final notes = <String>[];
