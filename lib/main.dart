@@ -47,6 +47,8 @@ class _LauncherPageState extends State<LauncherPage> {
   bool lowGraphics = true;
   bool showTouchControls = true;
   String? gameTreeUri;
+  List<String> gameLocales = [];
+  String? selectedLocale;
   int selectedNavTab = 0;
   final GlobalKey _gameSectionKey = GlobalKey();
   final GlobalKey _serverSectionKey = GlobalKey();
@@ -62,7 +64,10 @@ class _LauncherPageState extends State<LauncherPage> {
   Future<void> _loadSavedGameAccess() async {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
-      if (mounted && uri != null) setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
+      if (mounted && uri != null) {
+        setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
+        await _refreshGameLocales();
+      }
     } catch (_) {}
   }
 
@@ -70,7 +75,8 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
       if (!mounted || uri == null) return;
-      setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
+      setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; selectedLocale = null; });
+      await _refreshGameLocales();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game folder write access granted.')),
       );
@@ -82,6 +88,40 @@ class _LauncherPageState extends State<LauncherPage> {
   }
 
 
+  Future<void> _refreshGameLocales() async {
+    final treeUri = gameTreeUri;
+    if (treeUri == null) return;
+    try {
+      final scan = await _storageChannel.invokeMapMethod<String, dynamic>('scanGameTree', {'treeUri': treeUri});
+      final locales = (scan?['localeFolders'] as List? ?? const []).cast<String>();
+      if (!mounted) return;
+      setState(() {
+        gameLocales = locales;
+        if (selectedLocale != null && !locales.contains(selectedLocale)) selectedLocale = null;
+        if (locales.length == 1) selectedLocale = locales.first;
+      });
+    } catch (_) {
+      if (mounted) setState(() => gameLocales = []);
+    }
+  }
+
+  Future<String?> _chooseGameLocale() async {
+    if (gameLocales.isEmpty) await _refreshGameLocales();
+    if (!mounted || gameLocales.isEmpty) return null;
+    if (gameLocales.length == 1) return gameLocales.first;
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        backgroundColor: panel,
+        title: const Text('Choose game language', style: TextStyle(color: gold)),
+        children: gameLocales.map((locale) => SimpleDialogOption(
+          onPressed: () => Navigator.pop(dialogContext, locale),
+          child: Text(locale, style: const TextStyle(color: Colors.white)),
+        )).toList(),
+      ),
+    );
+  }
+
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
     final treeUri = gameTreeUri;
     if (treeUri == null) {
@@ -92,9 +132,15 @@ class _LauncherPageState extends State<LauncherPage> {
       return;
     }
     try {
+      final locale = selectedLocale ?? await _chooseGameLocale();
+      if (locale == null) {
+        if (mounted) showInfo('Choose a game language', 'No supported locale folder was found, or no language was selected. Check that the selected folder is the main WoW folder and contains Data/enUS or another locale folder.');
+        return;
+      }
+      if (mounted && selectedLocale != locale) setState(() => selectedLocale = locale);
       final written = await _storageChannel.invokeMethod<bool>(
         'writeRealmlist',
-        {'treeUri': treeUri, 'content': '${profile.realmlistLine}\n'},
+        {'treeUri': treeUri, 'content': '${profile.realmlistLine}\n', 'localeName': locale},
       );
       if (!mounted) return;
       if (written == true) {
