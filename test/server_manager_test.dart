@@ -39,4 +39,51 @@ void main() {
       expect(ServerProfile.parse('realm.example.com:70000'), isNull);
     });
   });
+
+
+  group('ServerProfile backup', () {
+    test('encodes and decodes saved profiles', () {
+      const profiles = [
+        ServerProfile(name: 'My Realm', host: 'realm.example.com', port: 3724),
+        ServerProfile(name: 'Test Realm', host: 'test.example.com', port: 8085),
+      ];
+      final backup = ServerProfile.encodeProfiles(profiles);
+      final restored = ServerProfile.decodeProfiles(backup);
+
+      expect(restored, hasLength(2));
+      expect(restored.first.name, 'My Realm');
+      expect(restored.last.port, 8085);
+    });
+
+    test('ignores duplicate host and port entries in a backup', () {
+      final backup = '''
+      {
+        "format": "azeroth-mobile-realms",
+        "version": 1,
+        "profiles": [
+          {"name":"One","host":"realm.example.com","port":3724},
+          {"name":"Duplicate","host":"realm.example.com","port":3724}
+        ]
+      }
+      ''';
+
+      final restored = ServerProfile.decodeProfiles(backup);
+      expect(restored, hasLength(1));
+      expect(restored.single.name, 'One');
+    });
+
+    test('rejects unsupported backup formats and invalid ports', () {
+      expect(
+        () => ServerProfile.decodeProfiles('{"format":"other","version":1,"profiles":[]}'),
+        throwsFormatException,
+      );
+      expect(
+        () => ServerProfile.decodeProfiles('''
+          {"format":"azeroth-mobile-realms","version":1,
+           "profiles":[{"name":"Bad","host":"realm.example.com","port":70000}]}
+        '''),
+        throwsFormatException,
+      );
+    });
+  });
 }
