@@ -83,7 +83,7 @@ class ServerManagerCard extends StatefulWidget {
     required this.onServerSelected,
   });
 
-  final ValueChanged<ServerProfile> onServerSelected;
+  final ValueChanged<ServerProfile?> onServerSelected;
 
   @override
   State<ServerManagerCard> createState() => _ServerManagerCardState();
@@ -215,6 +215,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     }
   }
   Future<void> _deleteProfile(ServerProfile profile) async {
+    final wasSelected = _selectedProfileKey == profile.key;
     setState(() {
       _profiles = _profiles
           .where((p) => !(p.host == profile.host && p.port == profile.port))
@@ -224,6 +225,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     final prefs = await SharedPreferences.getInstance();
     await _saveProfiles();
     if (_selectedProfileKey == null) await prefs.remove(_selectedKey);
+    if (wasSelected) widget.onServerSelected(null);
   }
 
   @override
