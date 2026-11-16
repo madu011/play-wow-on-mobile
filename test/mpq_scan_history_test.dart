@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:myapp/mpq_checksum_scanner.dart';
 import 'package:myapp/mpq_scan_history.dart';
@@ -259,6 +261,101 @@ void main() {
     expect(comparison.count(MpqFileChangeType.unchanged), 1);
     expect(comparison.count(MpqFileChangeType.unverified), 1);
     expect(comparison.count(MpqFileChangeType.missing), 0);
+  });
+
+
+  test('exports and imports a versioned scan history archive', () {
+    final entry = MpqScanHistoryEntry(
+      scannedAt: DateTime.utc(2026, 11, 16, 15),
+      durationMs: 2500,
+      discoveredFiles: 1,
+      completedFiles: 1,
+      successCount: 1,
+      errorCount: 0,
+      totalBytes: 2048,
+      cancelled: false,
+      fingerprints: const [
+        MpqFingerprint(
+          relativePath: 'common.MPQ',
+          sizeBytes: 2048,
+          sha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        ),
+      ],
+    );
+
+    final encoded = MpqScanHistoryArchive.encode(
+      [entry],
+      exportedAt: DateTime.utc(2026, 11, 16, 16),
+    );
+    final decoded = MpqScanHistoryArchive.decode(encoded);
+
+    expect(decoded, hasLength(1));
+    expect(decoded.single.id, entry.id);
+    expect(decoded.single.fingerprints.single.sha256,
+        entry.fingerprints.single.sha256);
+  });
+
+  test('sorts imported scans newest first and ignores duplicate ids', () {
+    MpqScanHistoryEntry entry(DateTime time) => MpqScanHistoryEntry(
+          scannedAt: time,
+          durationMs: 100,
+          discoveredFiles: 0,
+          completedFiles: 0,
+          successCount: 0,
+          errorCount: 0,
+          totalBytes: 0,
+          cancelled: false,
+        );
+
+    final older = entry(DateTime.utc(2026, 11, 15));
+    final newer = entry(DateTime.utc(2026, 11, 16));
+    final decoded = MpqScanHistoryArchive.decode(
+      MpqScanHistoryArchive.encode([older, newer, older]),
+    );
+
+    expect(decoded, hasLength(2));
+    expect(decoded.first.id, newer.id);
+    expect(decoded.last.id, older.id);
+  });
+
+  test('rejects an unsupported scan history archive format', () {
+    expect(
+      () => MpqScanHistoryArchive.decode(
+        '{"format":"unknown","version":1,"entries":[]}',
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test('rejects malformed fingerprint hashes in imported archives', () {
+    final invalid = {
+      'format': MpqScanHistoryArchive.format,
+      'version': MpqScanHistoryArchive.version,
+      'entries': [
+        {
+          'scannedAt': DateTime.utc(2026, 11, 16).millisecondsSinceEpoch,
+          'durationMs': 1,
+          'discoveredFiles': 1,
+          'completedFiles': 1,
+          'successCount': 1,
+          'errorCount': 0,
+          'totalBytes': 10,
+          'cancelled': false,
+          'fingerprints': [
+            {
+              'relativePath': 'bad.MPQ',
+              'sizeBytes': 10,
+              'sha256': 'not-a-sha256',
+              'error': null,
+            }
+          ],
+        }
+      ],
+    };
+    expect(
+      () => MpqScanHistoryArchive.decode(jsonEncode(invalid)),
+      throwsFormatException,
+    );
   });
 
 }
