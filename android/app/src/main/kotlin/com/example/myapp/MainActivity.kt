@@ -40,15 +40,16 @@ class MainActivity : FlutterActivity() {
         if (uri == null) { result?.success(null); return }
         try {
             val flags = (data?.flags ?: 0) and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            if (flags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0) {
-                throw SecurityException("Android did not grant read access. Please select the WoW folder again and confirm access.")
+            if (flags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0 ||
+                flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION == 0) {
+                throw SecurityException("Android did not grant both read and write access. In the folder picker, select the main WoW folder and tap Use this folder, then confirm Allow.")
             }
             contentResolver.takePersistableUriPermission(uri, flags)
             // Confirm that the persisted permission is really available before saving it.
             val persisted = contentResolver.persistedUriPermissions.any {
-                it.uri == uri && it.isReadPermission
+                it.uri == uri && it.isReadPermission && it.isWritePermission
             }
-            if (!persisted) throw SecurityException("Android could not keep permission for this folder. Please select the folder again.")
+            if (!persisted) throw SecurityException("Android could not keep read/write permission for this folder. Please select the folder again.")
             getSharedPreferences(prefsName, MODE_PRIVATE).edit().putString("game_tree_uri", uri.toString()).apply()
             result?.success(uri.toString())
         } catch (e: Exception) { result?.error("TREE_PERMISSION", e.message, null) }
@@ -283,7 +284,9 @@ class MainActivity : FlutterActivity() {
         val rootId = DocumentsContract.getTreeDocumentId(tree)
         val rootUri = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
         val data = children(rootUri).firstOrNull {
-            it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR
+            it.name.equals("Data", true) &&
+                (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank() ||
+                 it.mime == "application/octet-stream")
         } ?: return false
         val localeFolders = children(data.uri).filter {
             (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank()) &&
