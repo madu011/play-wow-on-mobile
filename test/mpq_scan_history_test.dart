@@ -224,4 +224,41 @@ void main() {
     expect(comparison.count(MpqFileChangeType.unreadable), 1);
   });
 
+
+  test('does not label unscanned files as missing after a cancelled scan', () {
+    final old = MpqScanHistoryEntry(
+      scannedAt: DateTime.utc(2026, 11, 15),
+      durationMs: 1000,
+      discoveredFiles: 2,
+      completedFiles: 2,
+      successCount: 2,
+      errorCount: 0,
+      totalBytes: 20,
+      cancelled: false,
+      fingerprints: const [
+        MpqFingerprint(relativePath: 'one.MPQ', sizeBytes: 10, sha256: 'one'),
+        MpqFingerprint(relativePath: 'two.MPQ', sizeBytes: 10, sha256: 'two'),
+      ],
+    );
+    final partial = MpqScanHistoryEntry(
+      scannedAt: DateTime.utc(2026, 11, 16),
+      durationMs: 500,
+      discoveredFiles: 2,
+      completedFiles: 1,
+      successCount: 1,
+      errorCount: 0,
+      totalBytes: 10,
+      cancelled: true,
+      fingerprints: const [
+        MpqFingerprint(relativePath: 'one.MPQ', sizeBytes: 10, sha256: 'one'),
+      ],
+    );
+
+    final comparison = MpqDetailedComparison.between(partial, old);
+
+    expect(comparison.count(MpqFileChangeType.unchanged), 1);
+    expect(comparison.count(MpqFileChangeType.unverified), 1);
+    expect(comparison.count(MpqFileChangeType.missing), 0);
+  });
+
 }
