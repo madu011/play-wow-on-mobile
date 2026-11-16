@@ -6,7 +6,7 @@ Play WoW on Mobile is a community-oriented Flutter project. It helps players org
 
 > **Status:** Experimental / in development. Builds and automated tests are useful checks, but real-device storage, realm, and game-runtime compatibility still require testing on supported Android devices.
 
-## Contents
+## 🧭 Contents
 
 - [Project goals](#project-goals)
 - [What it does](#what-it-does)
@@ -25,11 +25,11 @@ Play WoW on Mobile is a community-oriented Flutter project. It helps players org
 - [Contributing](#contributing)
 - [Project limitations and disclaimer](#project-limitations-and-disclaimer)
 
-## Project goals
+## 🎯 Project goals
 
 The project aims to make managing a WotLK 3.3.5a client on Android easier, especially for users who keep a game folder on device storage. Its current focus is file access, inspection, realm profile management, and diagnostics. A future mobile game runtime is a separate engineering task and is not implied by the launcher UI.
 
-## What it does
+## 🧰 Features
 
 | Feature | Current purpose |
 |---|---|
@@ -47,7 +47,7 @@ The project aims to make managing a WotLK 3.3.5a client on Android easier, espec
 
 Features depend on Android version, device, and the storage provider used to select the folder. See [Android storage access](#android-storage-access) and [What it does not do yet](#what-it-does-not-do-yet).
 
-## What it does not do yet
+## 🚧 What it does not do yet
 
 Please read this before installing or reporting a bug:
 
@@ -61,7 +61,7 @@ Please read this before installing or reporting a bug:
 - PE executable version inspection is not currently available through the Android document-tree scan path.
 - The app has not been validated against every Android OEM, Android release, or file manager/document provider.
 
-## Requirements
+## 📋 Requirements
 
 ### For users
 
@@ -76,7 +76,7 @@ Please read this before installing or reporting a bug:
 - A compatible Android SDK and Java 17 toolchain.
 - Git and a GitHub account if you want to build from this repository.
 
-## Install and build
+## 🚀 Install and build
 
 ### Install a release or test APK
 
@@ -92,8 +92,8 @@ A workflow run is not a release. Only use an APK artifact after the workflow has
 Clone the repository and run:
 
 ```bash
-git clone https://github.com/madu011/myapp.git
-cd myapp
+git clone https://github.com/madu011/play-wow-on-mobile.git
+cd play-wow-on-mobile
 flutter pub get
 flutter analyze
 flutter test
@@ -108,7 +108,7 @@ build/app/outputs/flutter-apk/app-release.apk
 
 The repository name may change; update the clone URL and folder name if it has been renamed.
 
-## First-time setup
+## 🧙 First-time setup
 
 1. Open the app.
 2. Tap **SELECT WOW GAME FOLDER**.
@@ -121,7 +121,7 @@ The repository name may change; update the clone URL and folder name if it has b
 
 Do not select only the `Data/` folder if the app asks for the top-level game folder.
 
-## Feature guide
+## 🗺️ Feature guide
 
 ### GAME — folder selection and inspection
 
@@ -165,7 +165,7 @@ A TCP connection is not the same as a successful WoW login. Authentication, real
 
 The current launcher contains basic low-graphics and touch-control preference switches. These are UI preferences in this prototype; they do not install a graphics driver or make the Windows client run on Android.
 
-## Android storage access
+## 📂 Android storage access
 
 Modern Android versions restrict broad filesystem access. Selecting a directory in one picker does not necessarily give an app unrestricted access through ordinary `/storage/emulated/0/...` paths.
 
@@ -180,7 +180,7 @@ If the inspector shows zero MPQ files or cannot find the executable:
 
 **Current limitation:** the SAF path does not yet provide the same streaming SHA-256 scanner and baseline workflow as the ordinary filesystem path. Do not treat an SAF scan showing zero files as proof that the game folder is empty.
 
-## MPQ checks and SHA-256
+## 🔍 MPQ checks and SHA-256
 
 Where ordinary filesystem access is available, the scanner reads MPQ archives as a stream and calculates SHA-256 fingerprints without loading the entire archive into memory.
 
@@ -188,7 +188,7 @@ A fingerprint identifies the exact bytes read. It does not decide whether those 
 
 The baseline library stores user-created snapshots. A baseline created from a modified or incomplete client is still only a snapshot; it is not an official Blizzard checksum database. The scan history stores summary metadata and, for a limited number of recent scans, per-file fingerprints. It does not store MPQ archive contents.
 
-## Data, privacy, and safety
+## 🔐 Data, privacy, and safety
 
 - Realm profiles and scan history are intended to be stored locally on the device.
 - Realm JSON backups contain saved server addresses and profile names; keep them private if you do not want to share those details.
@@ -199,7 +199,7 @@ The baseline library stores user-created snapshots. A baseline created from a mo
 
 Review the source code and Android permissions before installing community builds.
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 | Problem | What to check |
 |---|---|
@@ -213,7 +213,7 @@ Review the source code and Android permissions before installing community build
 | TCP succeeds but login fails | TCP reachability does not verify WoW authentication, client version, realm routing, or game compatibility. |
 | APK is unavailable | Wait for the single release workflow to finish successfully; a running or failed job does not have a valid APK artifact. |
 
-## Development and tests
+## 👨‍💻 Development and tests
 
 The main application is built with Flutter/Dart. Android-specific folder access is implemented in the native Android activity using Kotlin and a Flutter MethodChannel.
 
@@ -238,7 +238,7 @@ flutter test
 
 The repository uses one CI workflow to analyze, test, build a release APK, and upload the artifact. A successful CI build verifies compilation and automated tests only; it does not replace testing on a physical Android device.
 
-## Roadmap
+## 🧭 Roadmap
 
 Items below are plans, not claims that the feature is already complete.
 
@@ -251,7 +251,7 @@ Items below are plans, not claims that the feature is already complete.
 - [ ] Define and test a real Android game-runtime integration, if technically and legally feasible.
 - [ ] Verify launch, login, realm selection, and gameplay separately on supported hardware before claiming mobile play support.
 
-## Contributing
+## 🤝 Contributing
 
 Bug reports and pull requests are welcome. When reporting an issue, include:
 
@@ -263,7 +263,7 @@ Bug reports and pull requests are welcome. When reporting an issue, include:
 
 Do not upload WoW client files, account credentials, private server passwords, or personal backups in issues or pull requests. Keep bug reports focused on app code and reproducible behavior.
 
-## Project limitations and disclaimer
+## ⚠️ Project limitations and disclaimer
 
 World of Warcraft and related game assets are the property of their respective rights holders. This is an independent community project and is not affiliated with, endorsed by, or sponsored by Blizzard Entertainment.
 
