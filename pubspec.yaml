@@ -1,4 +1,4 @@
-name: myapp
+name: play_wow_on_mobile
 description: "Play WoW on Mobile - community Android companion launcher and WotLK 3.3.5a game-folder toolkit"
 publish_to: 'none'
 version: 0.1.0+1
