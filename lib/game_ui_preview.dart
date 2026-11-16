@@ -13,12 +13,9 @@ class GameUiPreviewPage extends StatefulWidget {
 }
 
 class _GameUiPreviewPageState extends State<GameUiPreviewPage> {
-  String _selectedWindow = '';
   int _selectedAction = -1;
-  int _selectedTab = 0;
 
   void _openWindow(String name) {
-    setState(() => _selectedWindow = name);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -173,7 +170,7 @@ class _GameUiPreviewPageState extends State<GameUiPreviewPage> {
   ]));
 
   Widget _actionButton(int index, {bool small = false}) {
-    const icons = [Icons.local_fire_department, Icons.flash_on, Icons.auto_awesome, Icons.shield, Icons.bolt, Icons.healing, Icons.ac_unit, Icons.swords, Icons.star, Icons.favorite, Icons.waves, Icons.whatshot];
+    const icons = [Icons.local_fire_department, Icons.flash_on, Icons.auto_awesome, Icons.shield, Icons.bolt, Icons.healing, Icons.ac_unit, Icons.sports_martial_arts, Icons.star, Icons.favorite, Icons.waves, Icons.whatshot];
     return InkWell(
       onTap: () => setState(() => _selectedAction = index),
       child: Container(
