@@ -62,3 +62,22 @@ The current Flutter APK therefore cannot run Wow.exe. Adding a button or a Metho
 ## Current status
 
 Architecture decision recorded. No runtime binaries, Wine/Box64 libraries, container image or game engine have been integrated yet. This document is a technical integration plan, not evidence of gameplay support.
+
+
+## Upstream architecture inspection (2026-11-16)
+
+The upstream WoW Mobile project is not a small embeddable runtime library. Its current tree contains 272 Java source files, 338 C/C++ source/build files, 88 runtime asset files and 260 Android resource files, plus ARM64 native shared libraries. It declares the `com.winlator` manifest package and its own launcher, X server, container manager, controls editor and settings activities. Its Gradle app module uses compile SDK 34, min SDK 26, NDK 24.0.8215888 and CMake 3.22.1.
+
+### Integration decision after inspection
+
+Do not copy its runtime classes into the existing Flutter `MainActivity`: the upstream runtime is a complete Android application with tightly coupled activities, services, resources, native code and packaged assets. A quick Flutter plugin wrapper would omit essential lifecycle and X-server/container behavior and create a false runtime-ready state.
+
+The technically sound route is a controlled native-engine migration/fork:
+1. Pin and fork the upstream repository at a reviewed commit.
+2. Keep its Winlator runtime and container lifecycle intact.
+3. Rebrand its native launcher surfaces with the WOW LK visual design, or add a small Flutter front-end only after a stable native runtime API exists.
+4. Port existing WOW LK functions (SAF folder selection, game validation, realm profiles, diagnostics) into the native fork or expose them through an explicit bridge.
+5. Retain the upstream LGPL-2.1 license and all third-party notices; audit the licenses of each bundled native library, driver archive, rootfs component and ConsolePortLK package separately before redistributing a build.
+6. Build and test the native fork independently before merging any changes back into the Flutter repository.
+
+This migration is a larger architectural change than adding one Android module. No upstream runtime files have been copied into WOW LK in this step.
