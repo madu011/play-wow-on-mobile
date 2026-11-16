@@ -122,6 +122,45 @@ class _LauncherPageState extends State<LauncherPage> {
     };
   }
 
+  Map<String, String> _recommendedGraphicsSettings(Map<String, dynamic> info) {
+    final estimate = _devicePerformanceEstimate(info);
+    final scoreText = estimate['score'] ?? '';
+    final score = int.tryParse(scoreText.split('/').first) ?? 0;
+    final renderer = (info['gpuRenderer'] ?? '').toString().toLowerCase();
+    final isMali = renderer.contains('mali') ||
+        (info['gpuVendor'] ?? '').toString().toLowerCase().contains('arm');
+    if (score == 0) {
+      return {
+        'quality': 'Safe / minimum',
+        'resolution': 'Start at 800×600 equivalent',
+        'effects': 'Keep effects and shadows low',
+        'frameRate': 'Use a stable 30 FPS target',
+      };
+    }
+    if (score >= 82) {
+      return {
+        'quality': 'Medium (start here)',
+        'resolution': 'Start at native or 100%',
+        'effects': 'Medium effects; test shadows separately',
+        'frameRate': 'Try 30 FPS first; raise only after testing',
+      };
+    }
+    if (score >= 62) {
+      return {
+        'quality': isMali ? 'Low–Medium (Mali-safe start)' : 'Low–Medium',
+        'resolution': 'Start at 75–85%',
+        'effects': 'Low shadows and effects',
+        'frameRate': 'Stable 30 FPS target',
+      };
+    }
+    return {
+      'quality': 'Low',
+      'resolution': 'Start at 65–75%',
+      'effects': 'Disable or minimize shadows and effects',
+      'frameRate': 'Stable 25–30 FPS target',
+    };
+  }
+
   String _recommendedGraphicsProfile(Map<String, dynamic> info) {
     final renderer = (info['gpuRenderer'] ?? '').toString().toLowerCase();
     final vendor = (info['gpuVendor'] ?? '').toString().toLowerCase();
@@ -495,6 +534,10 @@ class _LauncherPageState extends State<LauncherPage> {
       ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
       ('Graphics Profile', _recommendedGraphicsProfile(info)),
       ('Performance Estimate', '${_devicePerformanceEstimate(info)['level']} • ${_devicePerformanceEstimate(info)['score']}'),
+      ('Suggested Quality', _recommendedGraphicsSettings(info)['quality']!),
+      ('Suggested Resolution', _recommendedGraphicsSettings(info)['resolution']!),
+      ('Effects', _recommendedGraphicsSettings(info)['effects']!),
+      ('Frame Rate Target', _recommendedGraphicsSettings(info)['frameRate']!),
       ('OpenGL ES', info['openGlVersion']?.toString() ?? 'Checking…'),
       ('Vulkan API', info['vulkanVersion']?.toString() ?? 'Checking…'),
       ('Vulkan Level', info['vulkanLevel']?.toString() ?? 'Checking…'),
@@ -529,7 +572,7 @@ class _LauncherPageState extends State<LauncherPage> {
           Text(
             info['error']?.toString() ??
                 (deviceScanComplete
-                    ? 'Hardware detected. Performance is a heuristic estimate, not a gameplay benchmark; graphics settings are recommendations until the WoW runtime is integrated and tested.'
+                    ? 'Suggested graphics values are starting points only. They are not applied to the game; verify performance in a real runtime before increasing quality.'
                     : 'Reading device information directly from Android…'),
             style: const TextStyle(color: muted, fontSize: 10),
           ),
