@@ -48,7 +48,6 @@ class _LauncherPageState extends State<LauncherPage> {
   bool lowGraphics = true;
   bool showTouchControls = true;
   bool automaticGraphics = true;
-  bool _preferencesLoaded = false;
   String? gameTreeUri;
   List<String> gameLocales = [];
   String? selectedLocale;
@@ -75,10 +74,8 @@ class _LauncherPageState extends State<LauncherPage> {
         automaticGraphics = prefs.getBool('automatic_graphics') ?? true;
         lowGraphics = prefs.getBool('low_graphics') ?? true;
         showTouchControls = prefs.getBool('show_touch_controls') ?? true;
-        _preferencesLoaded = true;
       });
     } catch (_) {
-      if (mounted) setState(() => _preferencesLoaded = true);
     }
     await _detectDevice();
   }
@@ -97,13 +94,6 @@ class _LauncherPageState extends State<LauncherPage> {
     }
   }
 
-  void _applyAutomaticGraphicsRecommendation() {
-    final estimate = _devicePerformanceEstimate(deviceInfo);
-    final score = int.tryParse((estimate['score'] ?? '').split('/').first) ?? 0;
-    setState(() {
-      lowGraphics = score < 82;
-    });
-  }
 
   Future<void> _detectDevice() async {
     try {
