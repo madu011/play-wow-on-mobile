@@ -446,6 +446,40 @@ class _LauncherPageState extends State<LauncherPage> {
     }
   }
 
+  Future<void> _applyAutoContainerSettings() async {
+    try {
+      final result = await _storageChannel.invokeMapMethod<String, dynamic>(
+        'applyAutoContainerSettings',
+      );
+      if (!mounted || result == null) return;
+      if (result['success'] != true) {
+        showInfo('Winlator Auto Configure', result['message']?.toString() ??
+            'Create the WoW container first, then try again.');
+        return;
+      }
+      await _detectDevice();
+      if (!mounted) return;
+      showInfo(
+        'Winlator settings applied',
+        'WOW LK detected your hardware and saved these settings to the WoW container:\\n\\n'
+        'Graphics driver: ${result['graphicsDriver']}\\n'
+        'DirectX wrapper: ${result['dxWrapper']}\\n'
+        'Box64 preset: ${result['box64Preset']}\\n'
+        'Container resolution: ${result['screenSize']}\\n'
+        'Detected GPU: ${result['gpuRenderer']}\\n'
+        'RAM: ${result['totalRamMb']} MB • CPU cores: ${result['cpuCores']}\\n\\n'
+        '${result['note']}',
+      );
+    } on PlatformException catch (error) {
+      if (mounted) showInfo('Auto Configure failed', error.message ?? error.code);
+    } on MissingPluginException {
+      if (mounted) showInfo('Auto Configure unavailable',
+          'Update to the integrated WOW LK build that includes native Winlator auto-tuning.');
+    } catch (error) {
+      if (mounted) showInfo('Auto Configure failed', '$error');
+    }
+  }
+
   void _jumpToSection(int index, GlobalKey key) {
     setState(() => selectedNavTab = index);
     final target = key.currentContext;
@@ -884,6 +918,12 @@ class _LauncherPageState extends State<LauncherPage> {
                     ),
                   ),
                   _nativeSettingsTile(
+                    icon: Icons.auto_awesome,
+                    title: 'AUTO CONFIGURE WINLATOR',
+                    subtitle: 'Detect GPU, CPU and RAM; apply a compatible driver, DX wrapper and Box64 profile',
+                    onTap: _applyAutoContainerSettings,
+                  ),
+                  _nativeSettingsTile(
                     icon: Icons.gamepad,
                     title: 'Touch Controls Editor',
                     subtitle: 'Move, resize and configure on-screen buttons',
@@ -1059,7 +1099,7 @@ class _LauncherPageState extends State<LauncherPage> {
           Text(
             info['error']?.toString() ??
                 (deviceScanComplete
-                    ? 'Suggested graphics values are starting points only. They are not applied to the game; verify performance in a real runtime before increasing quality.'
+                    ? 'GPU details are read from Android graphics. Use AUTO CONFIGURE WINLATOR to save a hardware-matched starting profile to the actual WoW container. Performance still needs an in-game test.'
                     : 'Reading device information directly from Android…'),
             style: const TextStyle(color: muted, fontSize: 10),
           ),
