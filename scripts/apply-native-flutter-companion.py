@@ -127,7 +127,7 @@ public class WowLKCompanionActivity extends FlutterActivity {
         channel.setMethodCallHandler((call, result) -> {
             switch (call.method) {
                 case "openNativeGameLauncher":
-                    startActivity(new Intent(this, WowMobileActivity.class));
+                    startActivity(new Intent(this, WowMobileActivity.class).putExtra("wow.lk.AUTO_PLAY", true));
                     result.success(true);
                     break;
                 case "openNativeWowSettings":
