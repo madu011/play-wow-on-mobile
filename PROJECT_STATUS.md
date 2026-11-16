@@ -99,3 +99,13 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Latest corrected native workflow run: https://github.com/madu011/play-wow-on-mobile/actions/runs/43918851111
 - At the time of this checkpoint, launcher branding, SAF importer patch, and diagnostics patch all completed in CI; native Gradle APK compilation was still running. Do not claim build success until that run completes.
 - Physical Android testing is still required. In particular, confirm that the report contains the runtime/Wine/Box64 log entries needed to explain the actual realm disconnect.
+
+
+## 2026-11-16 native disconnect diagnostics build verification
+- Latest branch head before this status update: `ad82878ca5b06f18f559954ab6872eddce61cafc`.
+- Native runtime workflow run `43919075919` completed with conclusion **success** on commit `ad82878ca5b06f18f559954ab6872eddce61cafc`.
+- All source-patch steps completed, including branding, SAF game-folder importer, and disconnect diagnostics; Gradle `assembleRelease` completed successfully; artifact upload completed.
+- Artifact: `wow-mobile-native-runtime-unsigned`, artifact ID `14253390990`, size 164,430,347 bytes (~156.8 MiB), expires 2026-11-23.
+- Workflow: https://github.com/madu011/play-wow-on-mobile/actions/runs/43919075919
+- Artifact remains unsigned. Successful CI compilation does not establish installation, runtime stability, game compatibility, or successful realm connection on a physical Android device.
+- Next device validation: install the APK on a supported Android device, import a valid WoW 3.3.5a folder, launch the client, reproduce the realm-selection disconnect, then collect and review the diagnostics TXT report. Verify whether the app can access useful Wine/Box64/runtime logs; if not, implement explicit runtime log capture before attempting to diagnose the world-server handoff.
