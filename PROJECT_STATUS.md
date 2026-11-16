@@ -127,3 +127,11 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Added `scripts/apply-native-wow-controls.py` to install the profile and upgrade-safe profile-copy behavior into the pinned native engine. Added this patch to the native build workflow.
 - Hardware detection/input behavior is inherited from the native engine; physical keyboard keys are forwarded to the game and external mouse movement is handled by the existing pointer path. The soft keyboard remains available from the in-game drawer's Keyboard item when no physical keyboard is connected.
 - CI build and on-device validation are pending. Confirm the six key buttons, joystick, soft keyboard, external keyboard, and external mouse on a real device before marking the feature complete.
+
+
+## 2026-11-16 Android keyboard and mouse detection diagnostics
+- Latest touch-controls CI run 43920006009 completed successfully on commit 5619d64321cd868ede0c3bf26d32b36e18f8991c. All patch steps passed, native release APK compiled, debug APK compiled, signature verification passed, and both artifacts uploaded.
+- Added Android input-device enumeration to the disconnect diagnostics report. It lists reported device names, virtual/physical classification, keyboard type, and advertised KEYBOARD / MOUSE / GAMEPAD / JOYSTICK sources.
+- This helps verify whether Android recognizes a connected keyboard or mouse, separately from whether the game runtime receives its events. It does not force-enable unsupported peripherals or guarantee game-level input.
+- The diagnostics screen remains available from the native launcher. Run it with peripherals connected to capture their recognition state.
+- Build verification for this input-device diagnostics addition is pending; physical keyboard/mouse and touchscreen control tests are still required on a real Android device.

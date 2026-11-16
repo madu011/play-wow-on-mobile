@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.InputDevice;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -117,7 +118,9 @@ public class WowDiagnosticsActivity extends Activity {
         out.append("App package: ").append(getPackageName()).append("\n");
         out.append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n");
         out.append("Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
-        out.append("Build: ").append(Build.DISPLAY).append("\n\n");
+        out.append("Build: ").append(Build.DISPLAY).append("\n");
+        appendInputDevices(out);
+        out.append("\n");
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String gamePath = prefs.getString(WowMobileActivity.PREF_GAME_FOLDER, "");
@@ -148,6 +151,39 @@ public class WowDiagnosticsActivity extends Activity {
         out.append(readFilteredLogcat());
         out.append("\nEND OF REPORT\n");
         return out.toString();
+    }
+
+
+    /** Lists Android input devices and their advertised sources for hardware troubleshooting. */
+    private void appendInputDevices(StringBuilder out) {
+        out.append("\\nINPUT DEVICES\\n");
+        int[] ids = InputDevice.getDeviceIds();
+        if (ids == null || ids.length == 0) {
+            out.append("No Android input devices reported.\\n");
+            return;
+        }
+        for (int id : ids) {
+            InputDevice device = InputDevice.getDevice(id);
+            if (device == null) continue;
+            out.append("Device: ").append(safe(device.getName()))
+                    .append(" (id ").append(id).append(")\\n");
+            out.append("  Type: ").append(device.isVirtual() ? "Virtual" : "Physical / built-in")
+                    .append("; keyboard type: ").append(keyboardType(device.getKeyboardType())).append("\\n");
+            out.append("  Sources:");
+            boolean any = false;
+            if (device.supportsSource(InputDevice.SOURCE_KEYBOARD)) { out.append(" KEYBOARD"); any = true; }
+            if (device.supportsSource(InputDevice.SOURCE_MOUSE)) { out.append(" MOUSE"); any = true; }
+            if (device.supportsSource(InputDevice.SOURCE_GAMEPAD)) { out.append(" GAMEPAD"); any = true; }
+            if (device.supportsSource(InputDevice.SOURCE_JOYSTICK)) { out.append(" JOYSTICK"); any = true; }
+            if (!any) out.append(" other");
+            out.append("\\n");
+        }
+    }
+
+    private String keyboardType(int type) {
+        if (type == InputDevice.KEYBOARD_TYPE_ALPHABETIC) return "Alphabetic";
+        if (type == InputDevice.KEYBOARD_TYPE_NON_ALPHABETIC) return "Non-alphabetic";
+        return "None";
     }
 
     private String networkType() {
