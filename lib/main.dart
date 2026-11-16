@@ -82,6 +82,28 @@ class _LauncherPageState extends State<LauncherPage> {
     }
   }
 
+  String _recommendedGraphicsProfile(Map<String, dynamic> info) {
+    final renderer = (info['gpuRenderer'] ?? '').toString().toLowerCase();
+    final vendor = (info['gpuVendor'] ?? '').toString().toLowerCase();
+    final combined = '$vendor $renderer';
+    if (combined.contains('mali')) {
+      return 'Mali • OpenGL ES conservative profile';
+    }
+    if (combined.contains('adreno') || combined.contains('qualcomm')) {
+      return 'Adreno • OpenGL ES compatibility profile';
+    }
+    if (combined.contains('powervr')) {
+      return 'PowerVR • OpenGL ES compatibility profile';
+    }
+    if (combined.contains('vivante')) {
+      return 'Vivante • OpenGL ES conservative profile';
+    }
+    if (renderer.isEmpty || renderer == 'unavailable' || renderer == 'unknown') {
+      return 'Generic • OpenGL ES fallback (GPU not identified)';
+    }
+    return 'Generic • OpenGL ES compatibility profile';
+  }
+
   Future<void> _loadSavedGameAccess() async {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
@@ -431,6 +453,7 @@ class _LauncherPageState extends State<LauncherPage> {
       ('Architecture', (info['supportedAbis'] as List?)?.join(', ') ?? 'Detecting'),
       ('GPU Vendor', info['gpuVendor']?.toString() ?? 'Detecting'),
       ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
+      ('Graphics Profile', _recommendedGraphicsProfile(info)),
       ('OpenGL ES', info['openGlVersion']?.toString() ?? 'Checking…'),
       ('Vulkan API', info['vulkanVersion']?.toString() ?? 'Checking…'),
       ('Vulkan Level', info['vulkanLevel']?.toString() ?? 'Checking…'),
