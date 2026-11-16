@@ -278,7 +278,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
   void _refresh() {
     _scanCancellation?.cancel();
     setState(() {
-      _report = GameFolderReport.inspect(widget.folderPath);
+      _report = GameFolderReport.inspect(widget.folderPath, treeUri: widget.treeUri);
       _checksumFuture = null;
       _scanProgress = null;
       _scanCancellation = null;
