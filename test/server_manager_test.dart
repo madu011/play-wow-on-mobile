@@ -41,6 +41,37 @@ void main() {
   });
 
 
+  group('RealmDiagnosticReport', () {
+    test('shows successful DNS and TCP timings', () {
+      const report = RealmDiagnosticReport(
+        dnsSucceeded: true,
+        addresses: ['192.0.2.10'],
+        dnsMilliseconds: 12,
+        tcpSucceeded: true,
+        tcpMilliseconds: 35,
+      );
+
+      expect(report.displayLines.first, contains('DNS: Resolved'));
+      expect(report.displayLines[1], 'Address: 192.0.2.10');
+      expect(report.displayLines[2], contains('Connected'));
+      expect(report.displayLines.last, contains('does not confirm WoW login'));
+    });
+
+    test('shows DNS failure details without a TCP timing', () {
+      const report = RealmDiagnosticReport(
+        dnsSucceeded: false,
+        addresses: [],
+        dnsMilliseconds: 5000,
+        tcpSucceeded: false,
+        tcpMilliseconds: null,
+        error: 'Connection timed out.',
+      );
+
+      expect(report.displayLines.first, contains('DNS: Failed'));
+      expect(report.displayLines.last, 'Details: Connection timed out.');
+    });
+  });
+
   group('ServerProfile backup', () {
     test('encodes and decodes saved profiles', () {
       const profiles = [
