@@ -47,3 +47,8 @@ A dedicated GitHub Actions workflow now checks out the pinned submodule recursiv
 ## First native launcher branding pass
 
 A repeatable script (`scripts/apply-wowlk-branding.py`) now patches the upstream native launcher's app name and subtitle to WOW LK and applies a midnight-blue / restrained gold theme palette to the native dark theme before CI builds the APK. The upstream submodule remains pinned and unmodified in Git; the patch is applied in the CI checkout. This is an initial palette/string pass only: the launcher layout, app icon and full Icecrown artwork are not yet ported.
+
+
+## First upstream native APK build result
+
+GitHub Actions run #138 completed successfully. The pinned upstream Android application compiled with the specified JDK/SDK/NDK/CMake toolchain and uploaded an unsigned CI APK artifact (`wow-mobile-native-runtime-unsigned`, approximately 164 MB). This verifies that the upstream native engine source can be built in CI from the submodule. It is still the upstream WoW Mobile app, not yet a WOW LK-integrated release, and it has not been installed or tested on the target phone.
