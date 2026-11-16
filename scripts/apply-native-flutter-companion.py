@@ -83,6 +83,7 @@ activity.parent.mkdir(parents=True, exist_ok=True)
 activity.write_text('''package com.winlator.wowmobile;
 
 import android.app.Activity;
+import android.Manifest;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
@@ -154,9 +155,11 @@ public class WowLKCompanionActivity extends FlutterActivity {
                         break;
                     }
                     pendingFolderResult = result;
-                    Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                    picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                    startActivityForResult(picker, REQUEST_GAME_TREE);
+                    if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 4020);
+                    } else {
+                        launchGameTreePicker();
+                    }
                     break;
                 case "cancelGameImport":
                     if (importCancelled != null) importCancelled.set(true);
@@ -175,6 +178,25 @@ public class WowLKCompanionActivity extends FlutterActivity {
                     result.notImplemented();
             }
         });
+    }
+
+    private void launchGameTreePicker() {
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(picker, REQUEST_GAME_TREE);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != 4020 || pendingFolderResult == null) return;
+        if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            launchGameTreePicker();
+        } else {
+            MethodChannel.Result callback = pendingFolderResult;
+            pendingFolderResult = null;
+            callback.error("STORAGE_PERMISSION", "Allow storage access so Winlator can read the original game files without copying them.", null);
+        }
     }
 
     @Override
