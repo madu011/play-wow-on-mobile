@@ -76,6 +76,9 @@ jobs:
       - name: Integrate Flutter companion into native Android app
         run: python3 scripts/apply-native-flutter-companion.py
 
+      - name: Apply hardware detection and Winlator auto-tuning
+        run: python3 scripts/apply-native-auto-tuning.py
+
       - name: Apply WOW LK launcher branding
         run: python3 scripts/apply-wowlk-branding.py
 
