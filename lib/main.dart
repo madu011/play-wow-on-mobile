@@ -680,6 +680,30 @@ class _LauncherPageState extends State<LauncherPage> {
     );
   }
 
+  String _deviceReportText() {
+    final estimate = _devicePerformanceEstimate(deviceInfo);
+    final settings = _recommendedGraphicsSettings(deviceInfo);
+    final rows = <String, String>{
+      'Device': '${deviceInfo['manufacturer'] ?? ''} ${deviceInfo['model'] ?? ''}'.trim(),
+      'Android': deviceInfo['androidVersion']?.toString() ?? 'Unknown',
+      'CPU cores': deviceInfo['cpuCores']?.toString() ?? 'Unknown',
+      'RAM MB': deviceInfo['totalRamMb']?.toString() ?? 'Unknown',
+      'GPU vendor': deviceInfo['gpuVendor']?.toString() ?? 'Unknown',
+      'GPU renderer': deviceInfo['gpuRenderer']?.toString() ?? 'Unknown',
+      'OpenGL ES': deviceInfo['openGlVersion']?.toString() ?? 'Unknown',
+      'Vulkan API': deviceInfo['vulkanVersion']?.toString() ?? 'Unknown',
+      'Performance estimate': '${estimate['level']} (${estimate['score']})',
+      'Graphics profile': _recommendedGraphicsProfile(deviceInfo),
+      'Suggested quality': settings['quality'] ?? 'Unknown',
+      'Suggested resolution': settings['resolution'] ?? 'Unknown',
+      'Suggested effects': settings['effects'] ?? 'Unknown',
+      'Suggested frame rate': settings['frameRate'] ?? 'Unknown',
+    };
+    return 'WOW LK — DEVICE & GRAPHICS REPORT\\n'
+        '${rows.entries.map((entry) => '${entry.key}: ${entry.value}').join('\\n')}'
+        '\\n\\nNote: estimates are heuristic only. No WoW runtime benchmark has been performed.';
+  }
+
   Widget _deviceInfoPanel() {
     final info = deviceInfo;
     final ram = info['totalRamMb'] is num
@@ -737,13 +761,26 @@ class _LauncherPageState extends State<LauncherPage> {
                     : 'Reading device information directly from Android…'),
             style: const TextStyle(color: muted, fontSize: 10),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: _detectDevice,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('RESCAN DEVICE'),
-            ),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: _detectDevice,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('RESCAN DEVICE'),
+              ),
+              TextButton.icon(
+                onPressed: deviceScanComplete
+                    ? () async {
+                        await Clipboard.setData(ClipboardData(text: _deviceReportText()));
+                        if (mounted) showInfo('Report copied', 'Device and graphics report copied to clipboard.');
+                      }
+                    : null,
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('COPY REPORT'),
+              ),
+            ],
           ),
         ],
       ),
