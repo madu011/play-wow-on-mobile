@@ -187,3 +187,13 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - The WoW settings screen applies realm, resolution, and view-distance values to the imported client configuration. The container editor exposes the existing Winlator graphics driver, DX wrapper, Box64, Wine, audio, environment, and drive configuration panels. The controls editor opens profile 0 for touch-layout editing.
 - Updated the Flutter graphics helper copy so it no longer claims that the native runtime is not integrated. The heuristic preset remains a recommendation; actual runtime configuration is performed in the native settings screens.
 - CI build and signature verification are required before distributing this revision. Physical-device validation is still required for activity launch, an existing container, profile availability, saving settings, and applying them to the game.
+
+## 2026-11-16 — Hardware detection and Winlator auto configuration
+- Added a native EGL graphics probe to report the Android GPU vendor, renderer, and OpenGL ES version instead of placeholder values.
+- Device diagnostics now include total/available RAM and physical screen resolution; Vulkan availability is reported from Android's Vulkan hardware feature flag (not a benchmark or guarantee that every Vulkan wrapper will work).
+- Added a native WOW LK Auto Tuner for the WoW Winlator container. It chooses a conservative starting combination of graphics driver, DX wrapper, Box64 preset, and container resolution from available RAM, CPU core count, Adreno detection, and Vulkan feature availability.
+- Newly created WoW containers receive the hardware-based starting profile automatically.
+- Existing containers can be updated explicitly using AUTO CONFIGURE WINLATOR in the Flutter companion. This saves settings into the actual native .container configuration; it does not just change the launcher recommendation.
+- Manual container settings remain available. Auto configuration is an opt-in reset of the listed container settings and should be run again only when the user wants to replace manual values.
+- The profile is a compatibility-first starting point, not a measured optimum. The DXVK path is selected only when Android reports Vulkan support; otherwise the tuner selects WineD3D. Physical-device build/install/gameplay testing is still required.
+- CI validation is pending for the commit containing these changes. No device gameplay result is claimed.
