@@ -338,7 +338,7 @@ class _LauncherPageState extends State<LauncherPage> {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
       final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
       if (mounted && uri != null) {
-        setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Imported WoW folder'; });
+        setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Linked original WoW folder'; });
         await _refreshGameLocales();
       }
     } catch (_) {}
@@ -353,7 +353,7 @@ class _LauncherPageState extends State<LauncherPage> {
       await _refreshGameLocales();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Game folder write access granted.')),
+        const SnackBar(content: Text('Original WoW folder linked. No files copied.')),
       );
       final profile = selectedServer;
       if (profile != null) await applyRealmToGameFolder(profile);
@@ -661,84 +661,20 @@ class _LauncherPageState extends State<LauncherPage> {
                     style: const TextStyle(color: muted, fontSize: 12),
                   ),
                   const SizedBox(height: 14),
-                  if (gameImporting) ...[
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        const Icon(Icons.downloading, color: gold, size: 18),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text('IMPORTING WOW CLIENT',
-                              style: TextStyle(color: gold, fontWeight: FontWeight.bold, fontSize: 11)),
-                        ),
-                        Text(
-                          gameImportTotalBytes > 0
-                              ? '${(gameImportCopiedBytes * 100 / gameImportTotalBytes).clamp(0, 100).toStringAsFixed(0)}%'
-                              : '...',
-                          style: const TextStyle(color: gold, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: gameImportTotalBytes > 0
-                          ? (gameImportCopiedBytes / gameImportTotalBytes).clamp(0.0, 1.0)
-                          : null,
-                      minHeight: 7,
-                      backgroundColor: const Color(0xFF30394A),
-                      color: gold,
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      gameImportCurrentPath,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: muted, fontSize: 10),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      gameImportTotalBytes > 0
-                          ? '${_formatImportBytes(gameImportCopiedBytes)} / ${_formatImportBytes(gameImportTotalBytes)}'
-                          : '${_formatImportBytes(gameImportCopiedBytes)} copied',
-                      style: const TextStyle(color: muted, fontSize: 10),
-                    ),
-                    const SizedBox(height: 9),
-                    OutlinedButton.icon(
-                      onPressed: gameImportCancelling ? null : _cancelGameImport,
-                      icon: const Icon(Icons.cancel_outlined),
-                      label: Text(gameImportCancelling ? 'CANCELLING...' : 'CANCEL IMPORT'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orangeAccent,
-                        side: const BorderSide(color: Colors.orangeAccent),
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                    ),
-                  ],
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
                     icon: const Icon(Icons.drive_folder_upload),
-                    label: const Text('SELECT WOW GAME FOLDER'),
+                    label: const Text('LINK ORIGINAL WOW GAME FOLDER'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
                       side: const BorderSide(color: gold),
                       minimumSize: const Size.fromHeight(46),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _requestGameFolderAccess,
-                    icon: const Icon(Icons.folder_shared_outlined),
-                    label: Text(gameTreeUri == null ? 'GRANT WRITE ACCESS' : 'RESELECT WRITE ACCESS'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: gold,
-                      side: BorderSide(color: gold.withValues(alpha: .65)),
-                      minimumSize: const Size.fromHeight(42),
-                    ),
-                  ),
                   Text(
                     gameTreeUri == null
-                        ? 'Select the same game folder in Android’s system picker to allow safe realmlist updates.'
-                        : 'Android folder write access is saved.',
+                        ? 'Select the original folder containing Wow.exe and Data/. WOW LK will validate and link it directly — no duplicate copy or extra storage.'
+                        : 'Original game folder is linked. Game files remain in their current location.',
                     style: const TextStyle(color: muted, fontSize: 10),
                   ),
                 ],
