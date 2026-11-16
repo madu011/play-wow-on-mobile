@@ -60,293 +60,55 @@ class _LauncherPageState extends State<LauncherPage> {
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
     final folder = gameFolder;
-    if (folder == null) {
-      showInfo('Select game folder first',
-          'Choose the folder containing Wow.exe and Data/. Then select a saved realm to apply its realmlist.');
-      return;
-    }
-
+    if (folder == null) return;
     try {
       final dataDirectory = Directory('$folder/Data');
       if (!await dataDirectory.exists()) {
         showInfo('WoW Data folder not found',
-            'The selected folder does not contain Data/. Please select the main folder containing Wow.exe.');
+            'Select the main game folder containing Wow.exe and Data/.');
         return;
       }
-
       final languageFolders = <Directory>[];
       await for (final entity in dataDirectory.list(followLinks: false)) {
         if (entity is Directory) {
           final name = entity.path.split(Platform.pathSeparator).last;
-          if (RegExp(r'^[a-z]{2}[A-Z]{2}
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: panel,
-        title: Text(title, style: const TextStyle(color: gold)),
-        content: Text(message, style: const TextStyle(color: muted)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: gold.withValues(alpha: .13),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: gold.withValues(alpha: .45)),
-                  ),
-                  child: const Icon(Icons.shield_moon, color: gold, size: 29),
-                ),
-                const SizedBox(width: 13),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('AZEROTH MOBILE',
-                          style: TextStyle(
-                              color: gold,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2)),
-                      Text('WRATH OF THE LICH KING · 3.3.5a',
-                          style: TextStyle(color: muted, fontSize: 10)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => showInfo(
-                    'About Azeroth Mobile',
-                    'A community launcher prototype. The Windows game runtime and graphics compatibility layer are not bundled in this first build.',
-                  ),
-                  icon: const Icon(Icons.info_outline, color: muted),
-                ),
-              ],
-            ),
-            const SizedBox(height: 26),
-            Container(
-              height: 176,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF263750), Color(0xFF101827), Color(0xFF392A25)],
-                ),
-                border: Border.all(color: gold.withValues(alpha: .35)),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(right: 18, top: 15,
-                    child: Icon(Icons.ac_unit, size: 118,
-                        color: Colors.white.withValues(alpha: .07))),
-                  const Positioned(
-                    left: 20, bottom: 20, right: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('YOUR ADVENTURE', style: TextStyle(
-                            color: Colors.white, fontSize: 25,
-                            fontWeight: FontWeight.w900, letterSpacing: 1)),
-                        Text('BEGINS IN NORTHREND',
-                            style: TextStyle(color: gold, fontSize: 12,
-                                letterSpacing: 2, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-            _sectionTitle('GAME CLIENT'),
-            _panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.folder_open, color: gold),
-                    const SizedBox(width: 10),
-                    const Expanded(child: Text('WoW game folder',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                    _status(gameFolder == null ? 'NOT SELECTED' : 'SELECTED',
-                        gameFolder == null ? Colors.orangeAccent : Colors.greenAccent),
-                  ]),
-                  const SizedBox(height: 10),
-                  Text(
-                    gameFolder ?? 'Choose the folder containing Wow.exe and Data/',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    onPressed: chooseGameFolder,
-                    icon: const Icon(Icons.drive_folder_upload),
-                    label: const Text('IMPORT GAME FOLDER'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: gold,
-                      side: const BorderSide(color: gold),
-                      minimumSize: const Size.fromHeight(46),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            _sectionTitle('SERVER MANAGER'),
-            ServerManagerCard(
-              onServerSelected: (profile) {
-                setState(() => selectedServer = profile);
-                if (gameFolder != null) applyRealmToGameFolder(profile);
-              },
-            ),
-            const SizedBox(height: 20),
-            _sectionTitle('PERFORMANCE & CONTROLS'),
-            _panel(
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    activeThumbColor: gold,
-                    title: const Text('Low graphics mode'),
-                    subtitle: const Text('Recommended for initial testing',
-                        style: TextStyle(color: muted, fontSize: 11)),
-                    value: lowGraphics,
-                    onChanged: (v) => setState(() => lowGraphics = v),
-                  ),
-                  const Divider(color: Color(0xFF293448)),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    activeThumbColor: gold,
-                    title: const Text('Touch control overlay'),
-                    subtitle: const Text('Virtual buttons and movement controls',
-                        style: TextStyle(color: muted, fontSize: 11)),
-                    value: showTouchControls,
-                    onChanged: (v) => setState(() => showTouchControls = v),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 58,
-              child: FilledButton.icon(
-                onPressed: () => showInfo(
-                  'Runtime not ready',
-                  'The game runtime is not ready yet. Selected realm: ${selectedServer?.name ?? 'None'}. Realmlist: ${selectedServer?.realmlistLine ?? 'Not selected'}. Realm profiles are saved locally, but applying the selected realmlist to the game folder and launching the game still need runtime integration.',
-                ),
-                icon: const Icon(Icons.play_arrow, size: 28),
-                label: const Text('PLAY WORLD OF WARCRAFT',
-                    style: TextStyle(fontWeight: FontWeight.w900,
-                        letterSpacing: 1)),
-                style: FilledButton.styleFrom(
-                  backgroundColor: gold,
-                  foregroundColor: const Color(0xFF17120A),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 13),
-            const Center(
-              child: Text('LAUNCHER PREVIEW · GAME ENGINE INTEGRATION PENDING',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: muted, fontSize: 9, letterSpacing: 1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: Text(text, style: const TextStyle(
-            color: gold, fontSize: 11, fontWeight: FontWeight.w800,
-            letterSpacing: 1.5)),
-      );
-
-  Widget _panel({required Widget child}) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: panel,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: const Color(0xFF263448)),
-        ),
-        child: child,
-      );
-
-  Widget _status(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(text, style: TextStyle(
-            color: color, fontSize: 9, fontWeight: FontWeight.bold)),
-      );
-}
-).hasMatch(name)) {
-            languageFolders.add(entity);
-          }
+          final isLocale = name.length == 4 &&
+              name.substring(0, 2).toLowerCase() == name.substring(0, 2) &&
+              name.substring(2, 4).toUpperCase() == name.substring(2, 4);
+          if (isLocale) languageFolders.add(entity);
         }
       }
-
       final targets = <File>[];
       for (final languageFolder in languageFolders) {
         final file = File('${languageFolder.path}/realmlist.wtf');
         if (await file.exists()) targets.add(file);
       }
-
       if (targets.isEmpty) {
-        Directory targetDirectory;
-        final enUs = Directory('${dataDirectory.path}/enUS');
-        final enGb = Directory('${dataDirectory.path}/enGB');
-        if (await enUs.exists()) {
-          targetDirectory = enUs;
-        } else if (await enGb.exists()) {
-          targetDirectory = enGb;
-        } else {
-          targetDirectory = enUs;
-          await targetDirectory.create(recursive: true);
+        Directory? targetDirectory;
+        for (final locale in ['enUS', 'enGB']) {
+          final candidate = Directory('${dataDirectory.path}/$locale');
+          if (await candidate.exists()) {
+            targetDirectory = candidate;
+            break;
+          }
         }
+        targetDirectory ??= Directory('${dataDirectory.path}/enUS');
+        await targetDirectory.create(recursive: true);
         targets.add(File('${targetDirectory.path}/realmlist.wtf'));
       }
-
       for (final file in targets) {
         await file.writeAsString('${profile.realmlistLine}\n', flush: true);
       }
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Realm applied: ${profile.name}'),
-          backgroundColor: const Color(0xFF1D684A),
-        ),
+        SnackBar(content: Text('Realm applied: ${profile.name}')),
       );
     } catch (error) {
       if (!mounted) return;
       showInfo('Could not update realmlist',
-          'Android could not write to the selected game folder. Re-select the WoW folder using the folder picker. Details: $error');
+          'Could not write the realmlist file. Check Android folder permissions. Details: $error');
     }
   }
-
   void showInfo(String title, String message) {
     showDialog<void>(
       context: context,
@@ -482,6 +244,7 @@ class _LauncherPageState extends State<LauncherPage> {
             ServerManagerCard(
               onServerSelected: (profile) {
                 setState(() => selectedServer = profile);
+                if (gameFolder != null) applyRealmToGameFolder(profile);
               },
             ),
             const SizedBox(height: 20),
