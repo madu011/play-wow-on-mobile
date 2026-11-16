@@ -2,6 +2,19 @@
 
 A Flutter launcher prototype for World of Warcraft: Wrath of the Lich King 3.3.5a.
 
+
+## Game Folder Inspector
+
+After selecting a game folder, the launcher displays a read-only scan of its basic structure:
+
+- Checks for the selected directory and a root-level `Wow.exe` or `Wow-64.exe`.
+- Checks for `Data/` and standard locale directories such as `enUS/` or `enGB/`.
+- Lists detected `realmlist.wtf` files.
+- Counts MPQ archives inside detected locale directories.
+- Provides a refresh control to run the scan again.
+
+The inspector does not modify game files. A successful structural scan does not verify archive integrity, the exact 3.3.5a client build, server compatibility, or whether the game can run on Android. Android storage providers may also restrict direct filesystem access even after a folder is selected.
+
 ## Saved realm profiles
 
 The launcher includes a **Server Manager** for saving multiple WotLK realmlist entries.
