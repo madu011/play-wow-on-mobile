@@ -27,7 +27,8 @@ void main() {
     final entry = MpqScanHistoryEntry.fromReport(report);
     final decoded = MpqScanHistoryEntry.fromJson(entry.toJson());
 
-    expect(decoded.scannedAt, report.scannedAt);
+    expect(decoded.scannedAt.millisecondsSinceEpoch,
+        report.scannedAt.millisecondsSinceEpoch);
     expect(decoded.durationMs, 8000);
     expect(decoded.discoveredFiles, 3);
     expect(decoded.completedFiles, 2);
