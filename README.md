@@ -15,7 +15,7 @@ Profiles are stored locally on the Android device using shared preferences.
 
 ### What the realmlist can and cannot tell us
 
-A WotLK realmlist entry identifies the authentication/logon endpoint. If no port is supplied, the launcher assumes the common WotLK auth port `3724`. The realmlist alone does **not** guarantee the server's client build, realm world address, world port, or compatibility. Those are supplied by the server's realm list and must be supported by the game client/runtime.
+A WotLK realmlist entry identifies the authentication/logon endpoint. If no port is supplied, the launcher assumes the common WotLK auth port `3724`. The realmlist alone does **not** guarantee the server's client build, realm world address, world port, or compatibility. Those are supplied by the server's realm list and must be supported by the game client/runtime. Each saved profile also has a TCP reachability check for its auth host and port; a successful TCP check only confirms that a connection can be opened, not that WoW authentication or gameplay will work.
 
 Use the realmlist line provided by the server. A website homepage URL is not necessarily a valid realmlist address.
 
