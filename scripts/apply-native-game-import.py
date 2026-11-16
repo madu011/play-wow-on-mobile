@@ -40,16 +40,16 @@ text = text.replace(
 )
 text = text.replace(
     "        if (!requestAppPermissions()) RootFSInstaller.installIfNeeded(this);",
-    "        autoPlayRequested = getIntent().getBooleanExtra(\\"wow.lk.AUTO_PLAY\\", false);\\n"
-    "        if (!requestAppPermissions()) {\\n"
-    "            RootFSInstaller.installIfNeeded(this);\\n"
-    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
-    "        }"
+    '        autoPlayRequested = getIntent().getBooleanExtra("wow.lk.AUTO_PLAY", false);\n'
+    '        if (!requestAppPermissions()) {\n'
+    '            RootFSInstaller.installIfNeeded(this);\n'
+    '            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n'
+    '        }'
 )
 text = text.replace(
-    "                updateStatus();\\n            }\\n            else finish();",
-    "                updateStatus();\\n                if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
-    "            }\\n            else finish();"
+    '                updateStatus();\n            }\n            else finish();',
+    '                updateStatus();\n                if (autoPlayRequested) waitForRootFsAndLaunch(600);\n'
+    '            }\n            else finish();'
 )
 method = """
     private void waitForRootFsAndLaunch(int attemptsLeft) {
