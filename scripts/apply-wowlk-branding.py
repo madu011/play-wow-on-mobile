@@ -30,6 +30,8 @@ if not PATCH.is_file(): raise SystemExit(f"Missing supplied app icon: {PATCH}")
 for density in ("mdpi","hdpi","xhdpi","xxhdpi","xxxhdpi"):
     target=RES/f"mipmap-{density}"/"ic_launcher.webp"
     target.parent.mkdir(parents=True,exist_ok=True)
+    legacy=target.with_suffix(".png")
+    if legacy.exists(): legacy.unlink()
     shutil.copyfile(PATCH,target)
 drawable=RES/"drawable"
 drawable.mkdir(parents=True,exist_ok=True)
