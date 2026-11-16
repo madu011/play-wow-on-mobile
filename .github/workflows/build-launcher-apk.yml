@@ -1,4 +1,4 @@
-name: Build Azeroth Mobile launcher APK
+name: Play WoW on Mobile - Android CI
 
 on:
   workflow_dispatch:
@@ -16,7 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  build-launcher:
+  build:
+    name: Analyze, test and build one APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -50,9 +51,10 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Upload launcher APK
+      - name: Upload the single APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: azeroth-mobile-launcher
+          name: play-wow-on-mobile-android
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+          retention-days: 14
