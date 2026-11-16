@@ -18,6 +18,8 @@ class ServerProfile {
   final String host;
   final int port;
 
+  String get key => '$host:$port';
+
   String get realmlistLine =>
       port == 3724 ? 'SET realmlist "$host"' : 'SET realmlist "$host:$port"';
 
@@ -93,7 +95,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
   final _nameController = TextEditingController();
   final _realmlistController = TextEditingController();
   List<ServerProfile> _profiles = [];
-  String? _selectedHost;
+  String? _selectedProfileKey;
   bool _loading = true;
   String? _inputError;
 
@@ -129,12 +131,12 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     if (!mounted) return;
     setState(() {
       _profiles = loaded;
-      _selectedHost = selected;
+      _selectedProfileKey = selected;
       _loading = false;
     });
     ServerProfile? match;
     for (final profile in loaded) {
-      if (profile.host == selected) {
+      if (profile.key == selected) {
         match = profile;
         break;
       }
@@ -176,7 +178,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
 
   Future<void> _selectProfile(ServerProfile profile) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedKey, profile.host);
+    await prefs.setString(_selectedKey, profile.key);
     if (!mounted) return;
     setState(() => _selectedHost = profile.host);
     widget.onServerSelected(profile);
@@ -187,11 +189,11 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
       _profiles = _profiles
           .where((p) => !(p.host == profile.host && p.port == profile.port))
           .toList();
-      if (_selectedHost == profile.host) _selectedHost = null;
+      if (_selectedProfileKey == profile.key) _selectedProfileKey = null;
     });
     final prefs = await SharedPreferences.getInstance();
     await _saveProfiles();
-    if (_selectedHost == null) await prefs.remove(_selectedKey);
+    if (_selectedProfileKey == null) await prefs.remove(_selectedKey);
   }
 
   @override
@@ -281,7 +283,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
             )
           else
             ..._profiles.map((profile) {
-              final selected = _selectedHost == profile.host;
+              final selected = _selectedProfileKey == profile.key;
               return Container(
                 margin: const EdgeInsets.only(bottom: 7),
                 decoration: BoxDecoration(
