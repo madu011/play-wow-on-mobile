@@ -64,3 +64,13 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - The native engine launcher is a separate Android app inside the pinned submodule. Its game-folder selection and realm settings are not yet connected to the root Flutter SAF picker or Realm Manager.
 - The branding script currently changes native app label/subtitle and theme palette. It does not yet implement the complete launcher redesign or a custom WOW LK launcher icon.
 - Therefore the next integration milestone must bridge the already-existing Flutter SAF/realm configuration to the native runtime (or implement equivalent supported storage/profile behavior in the native launcher). Merely improving the Flutter UI will not make the native engine use the selected game folder.
+
+
+## Next implementation milestone: native runtime game-folder import
+- Implement the import in the native engine app, not only in the Flutter companion launcher.
+- Use Android's Storage Access Framework folder-tree picker and persist only the URI permissions actually granted.
+- Because the Winlator game drive currently requires a real filesystem path, do not pass a `content://` URI as the F: drive path. Implement a controlled import/copy into the native app's accessible storage, or prove a supported filesystem bridge before choosing an alternative.
+- The importer must validate the selected tree (root-level WoW executable and required Data structure), estimate available destination space, stream files without loading them all into memory, expose progress, handle cancellation/errors, and preserve the original source.
+- Re-open and validate the imported folder after process restart; do not rely only on an in-memory URI or path.
+- Keep the current native launch/container path intact and update its F: drive mapping only after a complete, validated import.
+- Once this native import is working, connect realm profile selection and realmlist writing to the imported folder. The Flutter Realm Manager remains a separate existing feature until an explicit shared-data bridge is implemented.
