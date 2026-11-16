@@ -34,6 +34,43 @@ text = text.replace(
     "    private static final int REQUEST_WOW_GAME_TREE = 7413;\n"
     "    private AtomicBoolean importCancelled;"
 )
+text = text.replace(
+    "    private AtomicBoolean importCancelled;",
+    "    private AtomicBoolean importCancelled;\\n    private boolean autoPlayRequested;"
+)
+text = text.replace(
+    "        if (!requestAppPermissions()) RootFSInstaller.installIfNeeded(this);",
+    "        autoPlayRequested = getIntent().getBooleanExtra(\\\"wow.lk.AUTO_PLAY\\\", false);\\n"
+    "        if (!requestAppPermissions()) {\\n"
+    "            RootFSInstaller.installIfNeeded(this);\\n"
+    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
+    "        }"
+)
+text = text.replace(
+    "                updateStatus();\\n            }\\n            else finish();",
+    "                updateStatus();\\n                if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
+    "            }\\n            else finish();"
+)
+method = """
+    private void waitForRootFsAndLaunch(int attemptsLeft) {
+        if (!autoPlayRequested || isFinishing()) return;
+        com.winlator.xenvironment.RootFS rootFS = com.winlator.xenvironment.RootFS.find(this);
+        if (rootFS.isValid() && rootFS.getVersion() >= RootFSInstaller.LATEST_VERSION) {
+            autoPlayRequested = false;
+            onPlay();
+            return;
+        }
+        if (attemptsLeft <= 0) {
+            autoPlayRequested = false;
+            AppUtils.showToast(this, "Winlator system files are not ready. Please try Play again.");
+            return;
+        }
+        new Handler().postDelayed(() -> waitForRootFsAndLaunch(attemptsLeft - 1), 1000);
+    }
+
+"""
+text = text.replace("    private void onPlay() {", method + "    private void onPlay() {")
+
 
 activity_result = """
     @Override
