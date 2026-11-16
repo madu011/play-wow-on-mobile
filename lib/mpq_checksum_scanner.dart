@@ -35,7 +35,7 @@ class MpqScanProgress {
   final String? currentFile;
 
   double get fraction =>
-      totalFiles == 0 ? 1 : (completedFiles / totalFiles).clamp(0.0, 1.0);
+      totalFiles == 0 ? 1 : (completedFiles / totalFiles).clamp(0.0, 1.0).toDouble();
 }
 
 /// Cancellation is checked between archives. An archive already being hashed
