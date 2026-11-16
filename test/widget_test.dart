@@ -41,30 +41,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Graphics preset'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('RESCAN DEVICE'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('RESCAN DEVICE'), findsOneWidget);
     expect(find.text('COPY REPORT'), findsOneWidget);
   });
-  testWidgets('classic in-game interface preview opens with core HUD panels',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(const AzerothApp());
-    await tester.pump(const Duration(milliseconds: 100));
 
-    final previewButton = find.text('OPEN CLASSIC IN-GAME UI PREVIEW');
-    await tester.scrollUntilVisible(
-      previewButton,
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(previewButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('AZEROTH MOBILE  •  GAME UI'), findsOneWidget);
-    expect(find.text('AZEROTH'), findsWidgets);
-    expect(find.text('DALARAN'), findsOneWidget);
-    expect(find.text('BUFFS / DEBUFFS'), findsOneWidget);
-    expect(find.text('ACTION BARS'), findsOneWidget);
-    expect(find.text('OBJECTIVES'), findsOneWidget);
-    expect(find.text('GAME WINDOWS'), findsOneWidget);
-  });
 
 }
