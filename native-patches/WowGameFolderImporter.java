@@ -51,13 +51,11 @@ public final class WowGameFolderImporter {
             !canonicalSelected.getPath().startsWith(canonicalRoot.getPath() + File.separator)) {
             throw new IOException("The selected folder is outside the storage volume.");
         }
-        if (!canonicalSelected.isDirectory() || !canonicalSelected.canRead()) {
-            throw new IOException("The original game folder is not readable by WOW LK. Check Android storage permission.");
-        }
-
-        // Link the selected original folder without scanning game archives or locale files.
-        // Winlator receives the existing folder path and reports launch-time runtime errors only.
-                return canonicalSelected;
+        // SAF grants access to the document tree, but Android scoped storage may still
+        // make File.canRead()/File.isDirectory() report false. The caller verifies the
+        // actual contents through DocumentsContract using the persisted tree permission.
+        // Do not reject a valid SAF selection based on java.io.File permission probes.
+        return canonicalSelected;
     }
 
     private static void requireReadableFile(File file, String relativePath) throws IOException {
