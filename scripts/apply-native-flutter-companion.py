@@ -342,6 +342,8 @@ public class WowLKCompanionActivity extends FlutterActivity {
         info.put("brand", Build.BRAND);
         info.put("model", Build.MODEL);
         info.put("device", Build.DEVICE);
+        info.put("cpuModel", Build.VERSION.SDK_INT >= 31 ? Build.SOC_MODEL : Build.HARDWARE);
+        info.put("cpuArchitecture", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "Unknown");
         info.put("androidVersion", Build.VERSION.RELEASE);
         info.put("sdkInt", Build.VERSION.SDK_INT);
         info.put("cpuCores", Runtime.getRuntime().availableProcessors());
