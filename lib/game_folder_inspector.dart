@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 // ignore_for_file: deprecated_member_use
 
@@ -55,7 +56,40 @@ class GameFolderReport {
   bool get looksLikeWowFolder =>
       folderExists && executableFound && dataFolderFound;
 
-  static Future<GameFolderReport> inspect(String path) async {
+  static const _storageChannel = MethodChannel('wow.lk/storage');
+
+  static Future<GameFolderReport> inspect(String path, {String? treeUri}) async {
+    if (treeUri != null) {
+      final raw = await _storageChannel.invokeMapMethod<String, dynamic>(
+        'scanGameTree',
+        {'treeUri': treeUri},
+      );
+      if (raw == null) throw const FormatException('Android returned no folder scan data.');
+      final locales = (raw['localeFolders'] as List? ?? const []).cast<String>();
+      final realmlists = (raw['realmlistFiles'] as List? ?? const []).cast<String>();
+      final empty = (raw['emptyArchiveFiles'] as List? ?? const []).cast<String>();
+      final missing = (raw['missingCoreArchives'] as List? ?? const []).cast<String>();
+      final notes = (raw['notes'] as List? ?? const []).cast<String>();
+      final count = raw['archiveCount'] as int? ?? 0;
+      return GameFolderReport(
+        folderExists: raw['folderExists'] as bool? ?? true,
+        executableFound: raw['executableFound'] as bool? ?? false,
+        dataFolderFound: raw['dataFolderFound'] as bool? ?? false,
+        localeFolders: locales,
+        realmlistFiles: realmlists,
+        archiveCount: count,
+        executableInfo: null,
+        dataArchiveCount: count,
+        emptyArchiveFiles: empty,
+        missingCoreArchives: missing,
+        totalArchiveBytes: (raw['totalArchiveBytes'] as num? ?? 0).toInt(),
+        notes: [
+          ...notes,
+          if (count == 0) 'No MPQ archives were visible through Android folder access. Re-select the actual game folder and allow access to its contents.',
+          'Folder scan uses Android document access. Executable version inspection and SHA-256 scanning are not available through this provider yet.',
+        ],
+      );
+    }
     final root = Directory(path);
     if (!await root.exists()) {
       return const GameFolderReport(
@@ -171,9 +205,11 @@ class GameFolderInspector extends StatefulWidget {
   const GameFolderInspector({
     super.key,
     required this.folderPath,
+    this.treeUri,
   });
 
   final String folderPath;
+  final String? treeUri;
 
   @override
   State<GameFolderInspector> createState() => _GameFolderInspectorState();
@@ -187,6 +223,10 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
   bool _isChecksumScanning = false;
 
   void _startChecksumScan() {
+    if (widget.treeUri != null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SHA-256 scan via Android document access is not available in this build yet.')));
+      return;
+    }
     final cancellation = MpqScanCancellation();
     setState(() {
       _scanProgress = null;
@@ -219,13 +259,13 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
   @override
   void initState() {
     super.initState();
-    _report = GameFolderReport.inspect(widget.folderPath);
+    _report = GameFolderReport.inspect(widget.folderPath, treeUri: widget.treeUri);
   }
 
   @override
   void didUpdateWidget(covariant GameFolderInspector oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.folderPath != widget.folderPath) {
+    if (oldWidget.folderPath != widget.folderPath || oldWidget.treeUri != widget.treeUri) {
       _scanCancellation?.cancel();
       _report = GameFolderReport.inspect(widget.folderPath);
       _checksumFuture = null;
