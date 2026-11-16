@@ -54,6 +54,9 @@ jobs:
       - name: Apply WOW LK launcher branding
         run: python3 scripts/apply-wowlk-branding.py
 
+      - name: Apply native SAF game-folder importer
+        run: python3 scripts/apply-native-game-import.py
+
       - name: Build WOW LK branded native runtime APK
         working-directory: vendor/wow-mobile-engine
         run: |
