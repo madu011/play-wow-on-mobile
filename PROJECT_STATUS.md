@@ -42,9 +42,9 @@ The current branch README describes a Flutter launcher/helper prototype and says
 9. Produce a signed release only after signing configuration and runtime testing are complete.
 
 ## Current implementation state
-- No source-code implementation changes have been made in this continuation yet.
-- This file is the first progress-tracking commit for the continuation.
-- Next task: inspect the current branch tree and workflow definitions to resolve the Flutter/native-runtime integration question before touching application code.
+- Source implementation has since advanced: native SAF game-folder import and disconnect diagnostics are now committed; see the dated implementation checkpoints below.
+- Flutter and native runtime remain separate build targets; they are not yet integrated into one APK.
+- Continue from the latest dated checkpoint rather than treating this initial audit as the current state.
 
 
 ## 2026-11-16 architecture audit
@@ -85,3 +85,17 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Known limitation to revisit after CI: some document providers omit file sizes from metadata, so the preflight free-space estimate may be incomplete. The copy operation will still report a storage error if the device runs out of space; improve recursive size estimation and user-facing recovery before calling this production-ready.
 - Latest native build run for the importer workflow change: https://github.com/madu011/play-wow-on-mobile/actions/runs/43917972991
 - Next: inspect CI output; fix compile issues, then test SAF import on a real Android device before connecting Realm Manager profiles to the imported folder.
+
+
+## 2026-11-16 native disconnect diagnostics checkpoint
+- Added `native-patches/WowDiagnosticsActivity.java` and `scripts/apply-native-diagnostics.py`.
+- Added a **Disconnect Logs & Diagnostics** entry to the native launcher and registered the diagnostics activity in the manifest.
+- The diagnostics screen creates a timestamped TXT report in app-private storage and can share it through the existing FileProvider.
+- Report fields currently include Android/device/build details, selected game-folder presence, configured `realmlist.wtf` hostname, active network transport, DNS resolution results, TCP reachability of the configured login host on port 3724, and a filtered recent Android logcat excerpt.
+- Basic redaction is applied to log lines for common credential-like fields. Reports should still be reviewed before sharing because diagnostic logs can contain device/network metadata.
+- Important interpretation: a successful TCP test to login port 3724 does **not** prove the realm/world server is reachable. The game server endpoint is normally supplied after realm selection, so a realm-selection disconnect may require runtime/client logs that expose the negotiated world-server address. The current report does not yet capture that endpoint directly.
+- Workflow patching initially exposed a malformed escaped YAML step; corrected in commit `5a85c77ddf1ad864d33acac844d7e96bf0e08ffe`. The diagnostics source regex for `set realmlist` was corrected in the same fix commit.
+- Diagnostics implementation commit: `7bbd8a11015e43ea18212de23c90875f5c934831`.
+- Latest corrected native workflow run: https://github.com/madu011/play-wow-on-mobile/actions/runs/43918851111
+- At the time of this checkpoint, launcher branding, SAF importer patch, and diagnostics patch all completed in CI; native Gradle APK compilation was still running. Do not claim build success until that run completes.
+- Physical Android testing is still required. In particular, confirm that the report contains the runtime/Wine/Box64 log entries needed to explain the actual realm disconnect.
