@@ -225,7 +225,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
 
     String signed(int value) => value > 0 ? '+$value' : '$value';
     String signedBytes(int value) =>
-        '${value > 0 ? '+' : ''}${_bytes(value.abs())}';
+        '${value > 0 ? '+' : value < 0 ? '-' : ''}${_bytes(value.abs())}';
     String signedDuration(int value) {
       final seconds = value.abs() / 1000;
       final prefix = value > 0 ? '+' : value < 0 ? '-' : '';
