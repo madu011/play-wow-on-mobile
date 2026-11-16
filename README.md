@@ -101,3 +101,8 @@ The **Checksum Manifest** panel can:
 The local baseline is stored on the device and keyed to the selected folder path. JSON import/export allows a user-created baseline to be moved between devices. The manifest records its creation time and successful file hashes; unreadable files are excluded.
 
 **Important:** a locally created baseline is only a snapshot of the files at that moment. It is not an official Blizzard checksum list, and saving a baseline from a modified or damaged client does not establish that the client is original. For authoritative verification, compare against trusted checksums for the exact same client distribution.
+
+
+### Multiple named MPQ baselines
+
+The Checksum Baseline Library supports multiple named snapshots for one selected game folder. Give each baseline a label such as "Clean install" or "Before update", select one to compare with the latest scan, and export or delete the selected entry. Imported JSON manifests are added as separately named baselines. Names must be unique within that folder's local library. Baselines remain local to the device unless exported; imported baselines are still user-provided reference snapshots, not official checksums.
