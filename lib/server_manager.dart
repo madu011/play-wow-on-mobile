@@ -132,7 +132,13 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
       _selectedHost = selected;
       _loading = false;
     });
-    final match = loaded.where((p) => p.host == selected).firstOrNull;
+    ServerProfile? match;
+    for (final profile in loaded) {
+      if (profile.host == selected) {
+        match = profile;
+        break;
+      }
+    }
     if (match != null) widget.onServerSelected(match);
   }
 
