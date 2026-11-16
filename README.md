@@ -5,6 +5,13 @@ A Flutter launcher prototype for World of Warcraft: Wrath of the Lich King 3.3.5
 
 
 
+
+## MPQ SHA-256 fingerprints
+
+The Game Folder Inspector provides an on-demand SHA-256 scan of every MPQ file under `Data/`. It streams file contents rather than loading whole archives into memory and displays each relative path, file fingerprint, and any read errors. Non-MPQ files are ignored.
+
+A fingerprint is a file identity value, not an automatic integrity verdict. To verify an archive, compare its SHA-256 value with a trusted checksum published for the exact same client distribution. The app does not bundle guessed or unofficial reference hashes, and calculating a hash does not repair or modify files.
+
 ## Game data integrity scan
 
 The Game Folder Inspector recursively scans the selected `Data/` directory for MPQ archives. It reports the archive count, combined file size, zero-byte archives, and whether common WotLK archive names (`common.MPQ`, `common-2.MPQ`, `expansion.MPQ`, and `lichking.MPQ`) are present.
