@@ -88,7 +88,7 @@ class MpqScanHistoryEntry {
   String get id => scannedAt.microsecondsSinceEpoch.toString();
 }
 
-enum MpqFileChangeType { unchanged, changed, added, missing, unreadable }
+enum MpqFileChangeType { unchanged, changed, added, missing, unreadable, unverified }
 
 class MpqFileChange {
   const MpqFileChange({
@@ -128,11 +128,17 @@ class MpqDetailedComparison {
       final newFile = newFiles[path];
       MpqFileChangeType type;
       if (oldFile == null) {
-        type = newFile!.succeeded
-            ? MpqFileChangeType.added
-            : MpqFileChangeType.unreadable;
+        if (previous.cancelled) {
+          type = MpqFileChangeType.unverified;
+        } else {
+          type = newFile!.succeeded
+              ? MpqFileChangeType.added
+              : MpqFileChangeType.unreadable;
+        }
       } else if (newFile == null) {
-        type = MpqFileChangeType.missing;
+        type = latest.cancelled
+            ? MpqFileChangeType.unverified
+            : MpqFileChangeType.missing;
       } else if (!oldFile.succeeded || !newFile.succeeded) {
         type = MpqFileChangeType.unreadable;
       } else if (oldFile.sha256 != newFile.sha256 ||
@@ -333,6 +339,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       MpqFileChangeType.missing: 'MISSING',
       MpqFileChangeType.unreadable: 'READ ERROR',
       MpqFileChangeType.unchanged: 'UNCHANGED',
+      MpqFileChangeType.unverified: 'NOT VERIFIED',
     };
     final colors = {
       MpqFileChangeType.changed: Colors.orangeAccent,
@@ -340,6 +347,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       MpqFileChangeType.missing: Colors.redAccent,
       MpqFileChangeType.unreadable: Colors.deepOrangeAccent,
       MpqFileChangeType.unchanged: _muted,
+      MpqFileChangeType.unverified: _muted,
     };
 
     return Column(
@@ -358,6 +366,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
             _changeBadge('Missing', comparison.count(MpqFileChangeType.missing), Colors.redAccent),
             _changeBadge('Read errors', comparison.count(MpqFileChangeType.unreadable), Colors.deepOrangeAccent),
             _changeBadge('Unchanged', comparison.count(MpqFileChangeType.unchanged), _muted),
+            _changeBadge('Unverified', comparison.count(MpqFileChangeType.unverified), _muted),
           ],
         ),
         const SizedBox(height: 6),
