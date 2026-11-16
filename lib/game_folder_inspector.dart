@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'wow_client_version.dart';
 import 'mpq_checksum_scanner.dart';
 import 'mpq_manifest_manager.dart';
+import 'mpq_scan_history.dart';
 
 const _inspectorGold = Color(0xFFE2B45D);
 const _inspectorMuted = Color(0xFF9AA8BC);
@@ -548,6 +549,10 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                                   height: 1.35),
                             ),
                             MpqManifestManager(
+                              folderPath: widget.folderPath,
+                              report: fingerprints,
+                            ),
+                            MpqScanHistory(
                               folderPath: widget.folderPath,
                               report: fingerprints,
                             ),
