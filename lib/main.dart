@@ -991,8 +991,11 @@ class _LauncherPageState extends State<LauncherPage> {
     final rows = <String, String>{
       'Device': '${deviceInfo['manufacturer'] ?? ''} ${deviceInfo['model'] ?? ''}'.trim(),
       'Android': deviceInfo['androidVersion']?.toString() ?? 'Unknown',
+      'CPU model': deviceInfo['cpuModel']?.toString() ?? 'Unknown',
       'CPU cores': deviceInfo['cpuCores']?.toString() ?? 'Unknown',
+      'CPU architecture': deviceInfo['cpuArchitecture']?.toString() ?? 'Unknown',
       'RAM MB': deviceInfo['totalRamMb']?.toString() ?? 'Unknown',
+      'Available RAM MB': deviceInfo['availableRamMb']?.toString() ?? 'Unknown',
       'GPU vendor': deviceInfo['gpuVendor']?.toString() ?? 'Unknown',
       'GPU renderer': deviceInfo['gpuRenderer']?.toString() ?? 'Unknown',
       'OpenGL ES': deviceInfo['openGlVersion']?.toString() ?? 'Unknown',
@@ -1054,8 +1057,13 @@ class _LauncherPageState extends State<LauncherPage> {
     final rows = <(String, String)>[
       ('Device', '${info['manufacturer'] ?? 'Detecting'} ${info['model'] ?? ''}'.trim()),
       ('Android', info['androidVersion']?.toString() ?? 'Detecting'),
+      ('CPU model', info['cpuModel']?.toString() ?? 'Detecting'),
       ('CPU', info['cpuCores'] == null ? 'Detecting' : '${info['cpuCores']} cores'),
+      ('CPU architecture', info['cpuArchitecture']?.toString() ?? 'Detecting'),
       ('RAM', ram),
+      ('Available RAM', info['availableRamMb'] is num
+          ? '${((info['availableRamMb'] as num) / 1024).toStringAsFixed(1)} GB'
+          : 'Detecting'),
       ('Architecture', (info['supportedAbis'] as List?)?.join(', ') ?? 'Detecting'),
       ('GPU Vendor', info['gpuVendor']?.toString() ?? 'Detecting'),
       ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
