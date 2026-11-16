@@ -62,7 +62,7 @@ method = """
         }
         if (attemptsLeft <= 0) {
             autoPlayRequested = false;
-            AppUtils.showToast(this, "Winlator system files are not ready. Please try Play again.");
+            Toast.makeText(this, "Winlator system files are not ready. Please try Play again.", Toast.LENGTH_LONG).show();
             return;
         }
         new Handler().postDelayed(() -> waitForRootFsAndLaunch(attemptsLeft - 1), 1000);
