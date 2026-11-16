@@ -6,7 +6,7 @@ from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
 ENGINE=ROOT/"vendor"/"wow-mobile-engine"
 RES=ENGINE/"app/src/main/res"
-PATCH=ROOT/"native-patches"/"app-icon"/"wow-lk-dragon.webp"
+PATCH=ROOT/"native-patches"/"app-icon"/"wow-lk-user-supplied.png"
 STRINGS=RES/"values/strings.xml"
 STYLES=RES/"values/styles.xml"
 def replace_once(path,old,new):
@@ -27,7 +27,7 @@ for old,new in {
 '<item name="colorPrimaryVariant">#56677a</item>':'<item name="colorPrimaryVariant">#6F91B5</item>',
 '<item name="colorSecondaryVariant">#37424f</item>':'<item name="colorSecondaryVariant">#30445F</item>'
 }.items(): replace_once(STYLES,old,new)
-if not PATCH.is_file(): raise SystemExit(f"Missing supplied app icon: {PATCH}")
+if not PATCH.is_file(): raise SystemExit(f"Missing exact user-supplied PNG icon: {PATCH}")
 # Render opaque legacy launcher PNGs and a padded adaptive foreground.
 # Compositing onto the brand background prevents transparent checkerboard artifacts.
 background = (6, 18, 38, 255)
@@ -69,4 +69,4 @@ adaptive='''<?xml version="1.0" encoding="utf-8"?>
 '''
 for name in ("ic_launcher.xml","ic_launcher_round.xml"):
     (RES/"mipmap-anydpi-v26"/name).write_text(adaptive,encoding="utf-8")
-print("WOW LK: exact supplied dragon artwork installed as the sole launcher icon.")
+print("WOW LK: exact repository PNG installed as the sole launcher icon.")
