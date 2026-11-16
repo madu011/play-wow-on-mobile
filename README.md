@@ -114,3 +114,5 @@ The SHA-256 scanner displays file-based progress, the archive currently being pr
 ### Local MPQ scan history
 
 The Game Folder Inspector keeps the 20 most recent MPQ scan summaries for each selected game folder on the device. Each entry records the date/time, completion or cancellation state, discovered and completed archive counts, successful hashes, read errors, processed bytes, and elapsed time. History stores summaries only; it does not retain archive contents or the full hash list. The history is local to the device and is not synchronized.
+
+The history panel also provides a summary comparison: choose an older scan and compare it with the latest scan. It shows signed differences in successful hashes, read errors, completed/discovered files, processed bytes, and elapsed time. This is a comparison of scan summaries only; it does not identify which individual MPQ files changed because the history does not retain per-file fingerprints.
