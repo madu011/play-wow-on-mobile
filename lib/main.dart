@@ -82,6 +82,46 @@ class _LauncherPageState extends State<LauncherPage> {
     }
   }
 
+  Map<String, String> _devicePerformanceEstimate(Map<String, dynamic> info) {
+    final ramMb = (info['totalRamMb'] as num?)?.toInt() ?? 0;
+    final cores = (info['cpuCores'] as num?)?.toInt() ?? 0;
+    final renderer = (info['gpuRenderer'] ?? '').toString().toLowerCase();
+    final vendor = (info['gpuVendor'] ?? '').toString().toLowerCase();
+    final gpu = '$vendor $renderer';
+    if (ramMb <= 0 || cores <= 0) {
+      return {'level': 'Not enough device data', 'score': '—', 'basis': 'Waiting for RAM and CPU information'};
+    }
+
+    var score = 0;
+    score += ramMb >= 8000 ? 35 : ramMb >= 6000 ? 28 : ramMb >= 4000 ? 19 : 10;
+    score += cores >= 8 ? 30 : cores >= 6 ? 24 : cores >= 4 ? 17 : 9;
+
+    if (gpu.contains('mali') || gpu.contains('adreno') ||
+        gpu.contains('powervr') || gpu.contains('vivante')) {
+      score += 25;
+    } else if (renderer.isNotEmpty && renderer != 'unavailable' && renderer != 'unknown') {
+      score += 18;
+    } else {
+      score += 8;
+    }
+
+    final gles = (info['graphicsApi'] ?? '').toString().toLowerCase();
+    final vulkan = (info['vulkanVersion'] ?? '').toString();
+    if (vulkan.contains('.') && !vulkan.toLowerCase().contains('not reported')) {
+      score += 10;
+    } else if (gles.contains('0x3') || gles.contains('0x2')) {
+      score += 6;
+    }
+
+    final level = score >= 82 ? 'High (estimated)' :
+        score >= 62 ? 'Medium (estimated)' : 'Low (estimated)';
+    return {
+      'level': level,
+      'score': '$score/100',
+      'basis': 'Heuristic estimate from RAM, CPU cores and reported graphics features; not a game benchmark',
+    };
+  }
+
   String _recommendedGraphicsProfile(Map<String, dynamic> info) {
     final renderer = (info['gpuRenderer'] ?? '').toString().toLowerCase();
     final vendor = (info['gpuVendor'] ?? '').toString().toLowerCase();
@@ -454,6 +494,7 @@ class _LauncherPageState extends State<LauncherPage> {
       ('GPU Vendor', info['gpuVendor']?.toString() ?? 'Detecting'),
       ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
       ('Graphics Profile', _recommendedGraphicsProfile(info)),
+      ('Performance Estimate', '${_devicePerformanceEstimate(info)['level']} • ${_devicePerformanceEstimate(info)['score']}'),
       ('OpenGL ES', info['openGlVersion']?.toString() ?? 'Checking…'),
       ('Vulkan API', info['vulkanVersion']?.toString() ?? 'Checking…'),
       ('Vulkan Level', info['vulkanLevel']?.toString() ?? 'Checking…'),
@@ -488,7 +529,7 @@ class _LauncherPageState extends State<LauncherPage> {
           Text(
             info['error']?.toString() ??
                 (deviceScanComplete
-                    ? 'Hardware detected. Graphics settings are recommendations only until the WoW runtime is integrated and tested.'
+                    ? 'Hardware detected. Performance is a heuristic estimate, not a gameplay benchmark; graphics settings are recommendations until the WoW runtime is integrated and tested.'
                     : 'Reading device information directly from Android…'),
             style: const TextStyle(color: muted, fontSize: 10),
           ),
