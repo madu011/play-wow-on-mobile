@@ -103,7 +103,6 @@ class MpqChecksumManifest {
   }
 
   MpqManifestComparison compare(MpqFingerprintReport current) {
-    final baseline = {for (final entry in entries) entry.path: entry};
     final scanned = {
       for (final file in current.files.where((file) => file.succeeded))
         file.relativePath: file
