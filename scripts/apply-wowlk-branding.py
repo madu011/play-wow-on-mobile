@@ -35,10 +35,15 @@ for density in ("mdpi","hdpi","xhdpi","xxhdpi","xxxhdpi"):
     shutil.copyfile(PATCH,target)
 drawable=RES/"drawable"
 drawable.mkdir(parents=True,exist_ok=True)
+# Keep the adaptive icon foreground independent from ic_launcher itself.
+# Referencing @mipmap/ic_launcher here creates a recursive adaptive-icon resource.
+nodpi=RES/"drawable-nodpi"
+nodpi.mkdir(parents=True,exist_ok=True)
+shutil.copyfile(PATCH,nodpi/"wowlk_dragon_foreground.webp")
 (drawable/"ic_wowlk_supplied_foreground.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@mipmap/ic_launcher"
-    android:inset="15%" />
+    android:drawable="@drawable/wowlk_dragon_foreground"
+    android:inset="0%" />
 ''',encoding="utf-8")
 (RES/"values"/"wowlk_icon_colors.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
 <resources><color name="wowlk_icon_background">#061226</color></resources>
