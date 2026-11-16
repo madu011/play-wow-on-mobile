@@ -82,38 +82,203 @@ activity = NATIVE / "app" / "src" / "main" / "java" / "com" / "winlator" / "wowm
 activity.parent.mkdir(parents=True, exist_ok=True)
 activity.write_text('''package com.winlator.wowmobile;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.DocumentsContract;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodChannel;
 
-/** Hosts the existing Flutter companion UI inside the native WOW LK application. */
+/** Hosts the Flutter companion and bridges its game-folder and realm settings to Winlator. */
 public class WowLKCompanionActivity extends FlutterActivity {
     private static final String CHANNEL = "wow.lk/storage";
+    private static final int REQUEST_GAME_TREE = 4019;
+    private MethodChannel.Result pendingFolderResult;
+    private final java.util.concurrent.ExecutorService importerExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
-        new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
-            .setMethodCallHandler((call, result) -> {
-                if ("openNativeGameLauncher".equals(call.method)) {
+        MethodChannel channel = new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL);
+        channel.setMethodCallHandler((call, result) -> {
+            switch (call.method) {
+                case "openNativeGameLauncher":
                     startActivity(new Intent(this, WowMobileActivity.class));
                     result.success(true);
-                } else if ("getDeviceInfo".equals(call.method)) {
+                    break;
+                case "getDeviceInfo":
                     result.success(readBasicDeviceInfo());
-                } else {
+                    break;
+                case "getSavedGameTreeUri":
+                    result.success(getCompanionPreferences().getString("game_tree_uri", null));
+                    break;
+                case "pickGameFolderTree":
+                    if (pendingFolderResult != null) {
+                        result.error("IMPORT_BUSY", "A game-folder selection is already being processed.", null);
+                        break;
+                    }
+                    pendingFolderResult = result;
+                    Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                    picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                    startActivityForResult(picker, REQUEST_GAME_TREE);
+                    break;
+                case "scanGameTree":
+                    result.success(scanGameTree(call.argument("treeUri")));
+                    break;
+                case "writeRealmlist":
+                    result.success(writeRealmlist(call.argument("treeUri"), call.argument("content"), call.argument("localeName")));
+                    break;
+                default:
                     result.notImplemented();
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_GAME_TREE || pendingFolderResult == null) return;
+        final MethodChannel.Result callback = pendingFolderResult;
+        pendingFolderResult = null;
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            callback.success(null);
+            return;
+        }
+        final Uri treeUri = data.getData();
+        try {
+            int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(treeUri, flags);
+        } catch (SecurityException error) {
+            callback.error("TREE_PERMISSION", "Android could not retain access to the selected folder.", error.getMessage());
+            return;
+        }
+        importerExecutor.execute(() -> {
+            try {
+                File imported = WowGameFolderImporter.importTree(this, treeUri, new AtomicBoolean(false), null);
+                getCompanionPreferences().edit().putString("game_tree_uri", treeUri.toString())
+                    .putString("imported_game_path", imported.getAbsolutePath()).apply();
+                PreferenceManager.getDefaultSharedPreferences(this).edit()
+                    .putString(WowMobileActivity.PREF_GAME_FOLDER, imported.getAbsolutePath()).apply();
+                runOnUiThread(() -> callback.success(treeUri.toString()));
+            } catch (Exception error) {
+                runOnUiThread(() -> callback.error("GAME_IMPORT_FAILED",
+                    error.getMessage() == null ? "The selected WoW folder could not be imported." : error.getMessage(), null));
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (pendingFolderResult != null) {
+            pendingFolderResult.error("ACTIVITY_CLOSED", "The launcher closed before folder import completed.", null);
+            pendingFolderResult = null;
+        }
+        importerExecutor.shutdown();
+        super.onDestroy();
+    }
+
+    private SharedPreferences getCompanionPreferences() {
+        return getSharedPreferences("wow_lk_companion", Context.MODE_PRIVATE);
+    }
+
+    private Map<String, Object> scanGameTree(String rawTreeUri) {
+        Map<String, Object> response = new HashMap<>();
+        ArrayList<String> locales = new ArrayList<>();
+        if (rawTreeUri != null) {
+            try {
+                Uri tree = Uri.parse(rawTreeUri);
+                Uri dataFolder = findChild(tree, DocumentsContract.getTreeDocumentId(tree), "Data", true);
+                if (dataFolder != null) {
+                    Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(dataFolder));
+                    try (Cursor cursor = getContentResolver().query(children,
+                        new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                        if (cursor != null) {
+                            int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+                            int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
+                            while (cursor.moveToNext()) {
+                                String name = cursor.getString(nameCol);
+                                String mime = cursor.getString(mimeCol);
+                                if (name != null && DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) && name.matches("[A-Za-z]{2}[A-Za-z]{2}")) locales.add(name);
+                            }
+                        }
+                    }
                 }
-            });
+            } catch (Exception ignored) {}
+        }
+        response.put("localeFolders", locales);
+        return response;
+    }
+
+    private boolean writeRealmlist(String rawTreeUri, String content, String localeName) {
+        if (rawTreeUri == null || content == null || localeName == null || !localeName.matches("[A-Za-z]{2}[A-Za-z]{2}")) return false;
+        try {
+            Uri tree = Uri.parse(rawTreeUri);
+            Uri data = findChild(tree, DocumentsContract.getTreeDocumentId(tree), "Data", true);
+            if (data == null) return false;
+            Uri locale = findChild(tree, DocumentsContract.getDocumentId(data), localeName, true);
+            if (locale == null) return false;
+            Uri realmlist = findChild(tree, DocumentsContract.getDocumentId(locale), "realmlist.wtf", false);
+            if (realmlist == null) realmlist = DocumentsContract.createDocument(getContentResolver(), locale, "text/plain", "realmlist.wtf");
+            if (realmlist == null) return false;
+            try (OutputStream output = getContentResolver().openOutputStream(realmlist, "wt")) {
+                if (output == null) return false;
+                output.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                output.flush();
+            }
+            String importedPath = getCompanionPreferences().getString("imported_game_path", null);
+            if (importedPath != null) {
+                File localFile = new File(new File(new File(importedPath, "Data"), localeName), "realmlist.wtf");
+                File parent = localFile.getParentFile();
+                if (parent != null && parent.isDirectory()) {
+                    try (FileOutputStream output = new FileOutputStream(localFile, false)) {
+                        output.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        output.getFD().sync();
+                    }
+                }
+            }
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
+    private Uri findChild(Uri tree, String parentId, String name, boolean directory) {
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId);
+        String[] columns = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE};
+        try (Cursor cursor = getContentResolver().query(children, columns, null, null, null)) {
+            if (cursor == null) return null;
+            int idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
+            int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+            int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
+            while (cursor.moveToNext()) {
+                String childName = cursor.getString(nameCol);
+                boolean isDirectory = DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(mimeCol));
+                if (name.equalsIgnoreCase(childName) && isDirectory == directory) {
+                    return DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(idCol));
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private Map<String, Object> readBasicDeviceInfo() {
@@ -140,8 +305,7 @@ public class WowLKCompanionActivity extends FlutterActivity {
         info.put("screenResolution", "Not yet bridged");
         return info;
     }
-}
-''', encoding="utf-8")
+}''', encoding="utf-8")
 
 print("Flutter companion integration patch applied.")
 print("Launcher: Flutter companion Activity; native WoW launcher remains in the same APK.")

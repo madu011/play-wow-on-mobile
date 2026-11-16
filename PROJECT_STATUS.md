@@ -157,3 +157,11 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - CI now creates a dedicated Flutter module host, copies the canonical root lib/ sources into it, and writes a module pubspec with the same runtime dependencies. This preserves the existing root Flutter app workflow while producing a proper add-to-app AAR for the native host.
 - Updated the native integration patch to discover the generated release AAR Maven coordinates from its POM instead of hard-coding group/version assumptions.
 - The integrated build remains pending; check the module generation, AAR build, dependency resolution, Java compilation, and final signed APK stages before claiming success.
+
+
+## 2026-11-16 shared game-folder and Realm bridge — phase 2
+- Extended the generated Flutter host MethodChannel with persistent SAF tree selection, locale scanning, and realmlist writing.
+- Selecting the main WoW folder now invokes the existing native game-folder importer, validates and copies the client into app-owned storage, then writes the imported filesystem path to the Winlator preference key wow_game_folder.
+- The selected SAF tree URI is retained across launches. Realm writes are applied to the selected source tree and mirrored into the imported app-owned game folder so the native Winlator F: drive uses the same selected realm.
+- Import errors are returned to Flutter as a typed platform error; the native launcher will not be marked ready when the import fails.
+- CI compilation is required before this phase can be considered build-verified. Physical-device validation remains required for large client import duration, available-storage checks, document-provider compatibility, process recreation, and verifying that the game launches using the selected realm.
