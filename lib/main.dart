@@ -77,6 +77,7 @@ class _LauncherPageState extends State<LauncherPage> {
       if (!mounted || uri == null) return;
       setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; selectedLocale = null; });
       await _refreshGameLocales();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game folder write access granted.')),
       );
