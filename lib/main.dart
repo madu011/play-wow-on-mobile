@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'server_manager.dart';
 import 'game_folder_inspector.dart';
@@ -21,7 +22,7 @@ class AzerothApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Azeroth Mobile',
+        title: 'WOW LK',
         theme: ThemeData(
           brightness: Brightness.dark,
           scaffoldBackgroundColor: bg,
@@ -48,6 +49,36 @@ class _LauncherPageState extends State<LauncherPage> {
   ServerProfile? selectedServer;
   bool lowGraphics = true;
   bool showTouchControls = true;
+  String? gameTreeUri;
+  static const _storageChannel = MethodChannel('wow.lk/storage');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedGameAccess();
+  }
+
+  Future<void> _loadSavedGameAccess() async {
+    try {
+      final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
+      if (mounted && uri != null) setState(() => gameTreeUri = uri);
+    } catch (_) {}
+  }
+
+  Future<void> _requestGameFolderAccess() async {
+    try {
+      final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
+      if (!mounted || uri == null) return;
+      setState(() => gameTreeUri = uri);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Game folder write access granted.')),
+      );
+      final profile = selectedServer;
+      if (profile != null) await applyRealmToGameFolder(profile);
+    } on PlatformException catch (error) {
+      if (mounted) showInfo('Folder access not granted', error.message ?? 'Please select the WoW game folder.');
+    }
+  }
 
   Future<void> chooseGameFolder() async {
     final result = await FilePicker.platform.getDirectoryPath(
@@ -62,54 +93,33 @@ class _LauncherPageState extends State<LauncherPage> {
 
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
-    final folder = gameFolder;
-    if (folder == null) return;
-    try {
-      final dataDirectory = Directory('$folder/Data');
-      if (!await dataDirectory.exists()) {
-        showInfo('WoW Data folder not found',
-            'Select the main game folder containing Wow.exe and Data/.');
-        return;
-      }
-      final languageFolders = <Directory>[];
-      await for (final entity in dataDirectory.list(followLinks: false)) {
-        if (entity is Directory) {
-          final name = entity.path.split(Platform.pathSeparator).last;
-          final isLocale = name.length == 4 &&
-              name.substring(0, 2).toLowerCase() == name.substring(0, 2) &&
-              name.substring(2, 4).toUpperCase() == name.substring(2, 4);
-          if (isLocale) languageFolders.add(entity);
-        }
-      }
-      final targets = <File>[];
-      for (final languageFolder in languageFolders) {
-        final file = File('${languageFolder.path}/realmlist.wtf');
-        if (await file.exists()) targets.add(file);
-      }
-      if (targets.isEmpty) {
-        Directory? targetDirectory;
-        for (final locale in ['enUS', 'enGB']) {
-          final candidate = Directory('${dataDirectory.path}/$locale');
-          if (await candidate.exists()) {
-            targetDirectory = candidate;
-            break;
-          }
-        }
-        targetDirectory ??= Directory('${dataDirectory.path}/enUS');
-        await targetDirectory.create(recursive: true);
-        targets.add(File('${targetDirectory.path}/realmlist.wtf'));
-      }
-      for (final file in targets) {
-        await file.writeAsString('${profile.realmlistLine}\n', flush: true);
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Realm applied: ${profile.name}')),
+    final treeUri = gameTreeUri;
+    if (treeUri == null) {
+      showInfo(
+        'Grant game folder access',
+        'Android requires you to select the WoW game folder using the system folder picker before WOW LK can update Data/<locale>/realmlist.wtf. Tap GRANT WRITE ACCESS and select the same game folder.',
       );
+      return;
+    }
+    try {
+      final written = await _storageChannel.invokeMethod<bool>(
+        'writeRealmlist',
+        {'treeUri': treeUri, 'content': '${profile.realmlistLine}\\n'},
+      );
+      if (!mounted) return;
+      if (written == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Realm applied: ${profile.name}')),
+        );
+      } else {
+        showInfo('Could not update realmlist', 'The selected folder does not contain a WoW Data folder. Please grant access to the main game folder.');
+      }
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      showInfo('Could not update realmlist', error.message ?? 'Android could not write the realmlist file.');
     } catch (error) {
       if (!mounted) return;
-      showInfo('Could not update realmlist',
-          'Could not write the realmlist file. Check Android folder permissions. Details: $error');
+      showInfo('Could not update realmlist', 'Details: $error');
     }
   }
   void showInfo(String title, String message) {
@@ -153,7 +163,7 @@ class _LauncherPageState extends State<LauncherPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('AZEROTH MOBILE',
+                      Text('WOW LK',
                           style: TextStyle(
                               color: gold,
                               fontSize: 18,
@@ -166,7 +176,7 @@ class _LauncherPageState extends State<LauncherPage> {
                 ),
                 IconButton(
                   onPressed: () => showInfo(
-                    'About Azeroth Mobile',
+                    'About WOW LK',
                     'A community launcher prototype. The Windows game runtime and graphics compatibility layer are not bundled in this first build.',
                   ),
                   icon: const Icon(Icons.info_outline, color: muted),
@@ -238,6 +248,23 @@ class _LauncherPageState extends State<LauncherPage> {
                       side: const BorderSide(color: gold),
                       minimumSize: const Size.fromHeight(46),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _requestGameFolderAccess,
+                    icon: const Icon(Icons.folder_shared_outlined),
+                    label: Text(gameTreeUri == null ? 'GRANT WRITE ACCESS' : 'RESELECT WRITE ACCESS'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gold,
+                      side: BorderSide(color: gold.withValues(alpha: .65)),
+                      minimumSize: const Size.fromHeight(42),
+                    ),
+                  ),
+                  Text(
+                    gameTreeUri == null
+                        ? 'Select the same game folder in Android’s system picker to allow safe realmlist updates.'
+                        : 'Android folder write access is saved.',
+                    style: const TextStyle(color: muted, fontSize: 10),
                   ),
                 ],
               ),
