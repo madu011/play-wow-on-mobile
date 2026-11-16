@@ -8,34 +8,31 @@ import android.database.Cursor
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 
 class MainActivity : FlutterActivity() {
     private val channelName = "wow.lk/storage"
     private val prefsName = "wow_lk_storage"
     private var pendingPickerResult: MethodChannel.Result? = null
-    private lateinit var treePicker: ActivityResultLauncher<Uri?>
+    private val treePickerRequestCode = 7412
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        treePicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            val result = pendingPickerResult
-            pendingPickerResult = null
-            if (uri == null) {
-                result?.success(null)
-            } else {
-                try {
-                    val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    contentResolver.takePersistableUriPermission(uri, flags)
-                    getSharedPreferences(prefsName, MODE_PRIVATE).edit()
-                        .putString("game_tree_uri", uri.toString()).apply()
-                    result?.success(uri.toString())
-                } catch (e: Exception) {
-                    result?.error("TREE_PERMISSION", e.message, null)
-                }
-            }
-        }
+    }
+
+    @Deprecated("Deprecated in Android API; retained for compatibility with FlutterActivity.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != treePickerRequestCode) return
+        val result = pendingPickerResult
+        pendingPickerResult = null
+        val uri = if (resultCode == RESULT_OK) data?.data else null
+        if (uri == null) { result?.success(null); return }
+        try {
+            val flags = (data?.flags ?: 0) and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            contentResolver.takePersistableUriPermission(uri, flags)
+            getSharedPreferences(prefsName, MODE_PRIVATE).edit().putString("game_tree_uri", uri.toString()).apply()
+            result?.success(uri.toString())
+        } catch (e: Exception) { result?.error("TREE_PERMISSION", e.message, null) }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -48,7 +45,10 @@ class MainActivity : FlutterActivity() {
                             result.error("PICKER_BUSY", "Folder picker is already open.", null)
                         } else {
                             pendingPickerResult = result
-                            treePicker.launch(null)
+                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                            }
+                            startActivityForResult(intent, treePickerRequestCode)
                         }
                     }
                     "getSavedGameTreeUri" -> result.success(
