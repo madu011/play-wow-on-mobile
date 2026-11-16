@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'wow_client_version.dart';
+
 const _inspectorGold = Color(0xFFE2B45D);
 const _inspectorMuted = Color(0xFF9AA8BC);
 
@@ -13,6 +15,7 @@ class GameFolderReport {
     required this.localeFolders,
     required this.realmlistFiles,
     required this.archiveCount,
+    required this.executableInfo,
     required this.notes,
   });
 
@@ -22,6 +25,7 @@ class GameFolderReport {
   final List<String> localeFolders;
   final List<String> realmlistFiles;
   final int archiveCount;
+  final WowExecutableInfo? executableInfo;
   final List<String> notes;
 
   int get passedChecks =>
@@ -43,6 +47,7 @@ class GameFolderReport {
         localeFolders: [],
         realmlistFiles: [],
         archiveCount: 0,
+        executableInfo: null,
         notes: ['Selected folder is no longer accessible.'],
       );
     }
@@ -53,8 +58,15 @@ class GameFolderReport {
     final rootNames = rootEntries
         .map((entity) => entity.path.split(Platform.pathSeparator).last.toLowerCase())
         .toSet();
-    final executableFound =
-        rootNames.contains('wow.exe') || rootNames.contains('wow-64.exe');
+    final executableName = rootNames.contains('wow.exe')
+        ? 'Wow.exe'
+        : rootNames.contains('wow-64.exe')
+            ? 'Wow-64.exe'
+            : null;
+    final executableFound = executableName != null;
+    final executableInfo = executableName == null
+        ? null
+        : await WowExecutableInfo.inspect(File('${root.path}/$executableName'));
     final data = Directory('${root.path}/Data');
     final dataFolderFound = await data.exists();
 
@@ -102,6 +114,7 @@ class GameFolderReport {
       localeFolders: locales,
       realmlistFiles: realmlists,
       archiveCount: archives,
+      executableInfo: executableInfo,
       notes: notes,
     );
   }
@@ -199,6 +212,27 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                 children: [
                   _checkRow('Selected folder exists', report.folderExists),
                   _checkRow('Wow.exe / Wow-64.exe', report.executableFound),
+                  if (report.executableInfo != null) ...[
+                    _checkRow(
+                      'Windows executable format',
+                      report.executableInfo!.isPortableExecutable,
+                      detail: report.executableInfo!.architecture,
+                    ),
+                    _checkRow(
+                      'WotLK 3.3.5a build marker',
+                      report.executableInfo!.possible335a,
+                      detail: report.executableInfo!.versionMarker ??
+                          'Not identified',
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 24, top: 2),
+                      child: Text(
+                        '${report.executableInfo!.optionalHeader} · ${report.executableInfo!.buildAssessment}',
+                        style: const TextStyle(
+                            color: _inspectorMuted, fontSize: 9, height: 1.3),
+                      ),
+                    ),
+                  ],
                   _checkRow('Data folder', report.dataFolderFound),
                   _checkRow('Locale folders', report.localeFolders.isNotEmpty,
                       detail: report.localeFolders.isEmpty
@@ -220,7 +254,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                   if (report.looksLikeWowFolder) ...[
                     const SizedBox(height: 9),
                     const Text(
-                      'Basic structure detected. This scan does not verify file integrity, client version, or runtime compatibility.',
+                      'Basic structure detected. Version markers are heuristic only; this scan does not verify file integrity or runtime compatibility.',
                       style: TextStyle(
                           color: _inspectorGold, fontSize: 10, height: 1.4),
                     ),
