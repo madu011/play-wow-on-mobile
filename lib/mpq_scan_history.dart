@@ -68,6 +68,29 @@ class MpqScanHistoryEntry {
   String get id => scannedAt.microsecondsSinceEpoch.toString();
 }
 
+class MpqScanComparison {
+  const MpqScanComparison({
+    required this.latest,
+    required this.previous,
+  });
+
+  final MpqScanHistoryEntry latest;
+  final MpqScanHistoryEntry previous;
+
+  int get hashedDelta => latest.successCount - previous.successCount;
+  int get errorDelta => latest.errorCount - previous.errorCount;
+  int get completedDelta => latest.completedFiles - previous.completedFiles;
+  int get discoveredDelta => latest.discoveredFiles - previous.discoveredFiles;
+  int get bytesDelta => latest.totalBytes - previous.totalBytes;
+  int get durationDeltaMs => latest.durationMs - previous.durationMs;
+
+  static MpqScanComparison between(
+    MpqScanHistoryEntry latest,
+    MpqScanHistoryEntry previous,
+  ) =>
+      MpqScanComparison(latest: latest, previous: previous);
+}
+
 class MpqScanHistory extends StatefulWidget {
   const MpqScanHistory({
     super.key,
@@ -90,6 +113,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
   List<MpqScanHistoryEntry> _entries = [];
   bool _loading = true;
   String? _error;
+  String? _comparisonEntryId;
 
   String get _key => 'mpq_scan_history_${sha256.convert(utf8.encode(widget.folderPath))}';
 
@@ -144,6 +168,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       if (!mounted) return;
       setState(() {
         _entries = loaded;
+        _comparisonEntryId = loaded.length > 1 ? loaded[1].id : null;
         _loading = false;
       });
     } catch (error) {
@@ -161,7 +186,13 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
       current,
       ..._entries.where((entry) => entry.id != current.id),
     ].take(_maxEntries).toList();
-    setState(() => _entries = updated);
+    setState(() {
+      _entries = updated;
+      if (_comparisonEntryId == null ||
+          !updated.any((entry) => entry.id == _comparisonEntryId)) {
+        _comparisonEntryId = updated.length > 1 ? updated[1].id : null;
+      }
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
@@ -182,6 +213,98 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
     }
     if (value >= 1024) return '${(value / 1024).toStringAsFixed(1)} KB';
     return '$value B';
+  }
+
+  Widget _buildComparisonSelector() {
+    final previousEntries = _entries.skip(1).toList();
+    final selected = previousEntries.any((entry) => entry.id == _comparisonEntryId)
+        ? _comparisonEntryId
+        : previousEntries.first.id;
+    final previous = previousEntries.firstWhere((entry) => entry.id == selected);
+    final comparison = MpqScanComparison.between(_entries.first, previous);
+
+    String signed(int value) => value > 0 ? '+$value' : '$value';
+    String signedBytes(int value) =>
+        '${value > 0 ? '+' : ''}${_bytes(value.abs())}';
+    String signedDuration(int value) {
+      final seconds = value.abs() / 1000;
+      final prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+      return '$prefix${seconds.toStringAsFixed(1)} sec';
+    }
+
+    Widget metric(String label, String value) => Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label.toUpperCase(),
+                  style: const TextStyle(
+                      color: _muted, fontSize: 8, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(value,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF172235),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFF344158)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('COMPARE WITH LATEST SCAN',
+              style: TextStyle(
+                  color: _gold, fontSize: 9, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 5),
+          DropdownButtonFormField<String>(
+            value: selected,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              border: OutlineInputBorder(),
+            ),
+            dropdownColor: const Color(0xFF172235),
+            style: const TextStyle(color: Colors.white, fontSize: 10),
+            items: previousEntries
+                .map((entry) => DropdownMenuItem<String>(
+                      value: entry.id,
+                      child: Text(entry.scannedAt.toLocal().toString(),
+                          overflow: TextOverflow.ellipsis),
+                    ))
+                .toList(),
+            onChanged: (value) => setState(() => _comparisonEntryId = value),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              metric('Hashed Δ', signed(comparison.hashedDelta)),
+              metric('Errors Δ', signed(comparison.errorDelta)),
+              metric('Files Δ', signed(comparison.completedDelta)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              metric('Data Δ', signedBytes(comparison.bytesDelta)),
+              metric('Time Δ', signedDuration(comparison.durationDeltaMs)),
+              metric('Found Δ', signed(comparison.discoveredDelta)),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'Latest scan compared with the selected older scan. Positive time means the latest scan took longer. Summary-only comparison; file hashes are not retained in history.',
+            style: const TextStyle(color: _muted, fontSize: 8, height: 1.35),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -216,7 +339,8 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
           else if (_entries.isEmpty)
             const Text('No scan history yet.',
                 style: TextStyle(color: _muted, fontSize: 9))
-          else
+          else ...[
+            if (_entries.length > 1) _buildComparisonSelector(),
             ..._entries.asMap().entries.map((item) {
               final index = item.key;
               final entry = item.value;
@@ -264,6 +388,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
                 ),
               );
             }),
+          ],
           const Text(
             'History stores scan summaries only. It does not store MPQ contents or the full SHA-256 list.',
             style: TextStyle(color: _muted, fontSize: 8, height: 1.35),
