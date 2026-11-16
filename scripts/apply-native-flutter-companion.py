@@ -218,6 +218,11 @@ public class WowLKCompanionActivity extends FlutterActivity {
             return;
         }
         try {
+            Map<String, Object> fileReport = scanGameTree(treeUri.toString());
+            if (!Boolean.TRUE.equals(fileReport.get("executableFound")) ||
+                !Boolean.TRUE.equals(fileReport.get("dataFolderFound"))) {
+                throw new IllegalStateException("The selected folder is accessible, but Wow.exe and Data/ were not both found at its root. Select the main WoW folder.");
+            }
             File originalGameFolder = WowGameFolderImporter.resolveAndValidateTree(this, treeUri);
             getCompanionPreferences().edit().putString("game_tree_uri", treeUri.toString())
                 .putString("imported_game_path", originalGameFolder.getAbsolutePath()).apply();
@@ -428,7 +433,11 @@ public class WowLKCompanionActivity extends FlutterActivity {
             int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
             while (cursor.moveToNext()) {
                 String childName = cursor.getString(nameCol);
-                boolean isDirectory = DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(mimeCol));
+                String mime = cursor.getString(mimeCol);
+                boolean knownDirectory = childName != null && (childName.equalsIgnoreCase("Data") ||
+                    childName.equalsIgnoreCase("WTF") || childName.matches("[A-Za-z]{2}[A-Za-z]{2}"));
+                boolean isDirectory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime) ||
+                    (directory && knownDirectory && (mime == null || mime.isEmpty() || "application/octet-stream".equals(mime)));
                 if (name.equalsIgnoreCase(childName) && isDirectory == directory) {
                     return DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(idCol));
                 }
