@@ -110,3 +110,7 @@ The Checksum Baseline Library supports multiple named snapshots for one selected
 ### MPQ scan progress and cancellation
 
 The SHA-256 scanner displays file-based progress, the archive currently being processed, and a completion summary with successful hashes, errors, bytes processed, and elapsed time. A scan can be cancelled between archives; if an archive is already being hashed, it is allowed to finish before the cancellation takes effect. A cancelled scan keeps the results for files completed before cancellation.
+
+### Local MPQ scan history
+
+The Game Folder Inspector keeps the 20 most recent MPQ scan summaries for each selected game folder on the device. Each entry records the date/time, completion or cancellation state, discovered and completed archive counts, successful hashes, read errors, processed bytes, and elapsed time. History stores summaries only; it does not retain archive contents or the full hash list. The history is local to the device and is not synchronized.
