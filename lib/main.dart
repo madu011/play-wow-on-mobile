@@ -50,6 +50,8 @@ class _LauncherPageState extends State<LauncherPage> {
   List<String> gameLocales = [];
   String? selectedLocale;
   int selectedNavTab = 0;
+  Map<String, dynamic> deviceInfo = {};
+  bool deviceScanComplete = false;
   final GlobalKey _gameSectionKey = GlobalKey();
   final GlobalKey _serverSectionKey = GlobalKey();
   final GlobalKey _toolsSectionKey = GlobalKey();
@@ -59,6 +61,25 @@ class _LauncherPageState extends State<LauncherPage> {
   void initState() {
     super.initState();
     _loadSavedGameAccess();
+    _detectDevice();
+  }
+
+  Future<void> _detectDevice() async {
+    try {
+      final info = await _storageChannel.invokeMapMethod<String, dynamic>('getDeviceInfo');
+      if (!mounted || info == null) return;
+      setState(() {
+        deviceInfo = info;
+        deviceScanComplete = true;
+        final ramMb = (info['totalRamMb'] as num?)?.toInt() ?? 0;
+        final cores = (info['cpuCores'] as num?)?.toInt() ?? 0;
+        // Conservative UI recommendation only; the game runtime is not integrated yet.
+        lowGraphics = ramMb < 6000 || cores <= 6;
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() { deviceScanComplete = true; deviceInfo = {'error': error.message ?? 'Device scan failed'}; });
+    }
   }
 
   Future<void> _loadSavedGameAccess() async {
@@ -270,6 +291,9 @@ class _LauncherPageState extends State<LauncherPage> {
               ),
             ),
             const SizedBox(height: 22),
+            _sectionTitle('DEVICE DETECTION'),
+            _deviceInfoPanel(),
+            const SizedBox(height: 20),
             Container(key: _gameSectionKey, child: _sectionTitle('GAME CLIENT')),
             _panel(
               child: Column(
@@ -390,6 +414,65 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _deviceInfoPanel() {
+    final info = deviceInfo;
+    final ram = info['totalRamMb'] is num
+        ? '${((info['totalRamMb'] as num) / 1024).toStringAsFixed(1)} GB'
+        : 'Checking…';
+    final rows = <(String, String)>[
+      ('Device', '${info['manufacturer'] ?? 'Detecting'} ${info['model'] ?? ''}'.trim()),
+      ('Android', info['androidVersion']?.toString() ?? 'Detecting'),
+      ('CPU', info['cpuCores'] == null ? 'Detecting' : '${info['cpuCores']} cores'),
+      ('RAM', ram),
+      ('Architecture', (info['supportedAbis'] as List?)?.join(', ') ?? 'Detecting'),
+      ('Graphics API', info['graphicsApi']?.toString() ?? 'Checking support…'),
+      ('Screen', info['screenResolution']?.toString() ?? 'Detecting'),
+    ];
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.phonelink_setup, color: gold),
+            const SizedBox(width: 9),
+            const Expanded(child: Text('Automatic hardware scan',
+                style: TextStyle(fontWeight: FontWeight.bold))),
+            _status(deviceScanComplete ? 'SCANNED' : 'SCANNING',
+                deviceScanComplete ? Colors.greenAccent : Colors.orangeAccent),
+          ]),
+          const SizedBox(height: 10),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(children: [
+                SizedBox(width: 104, child: Text(row.$1,
+                    style: const TextStyle(color: muted, fontSize: 12))),
+                Expanded(child: Text(row.$2,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+              ]),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            info['error']?.toString() ??
+                (deviceScanComplete
+                    ? 'Hardware detected. Graphics settings are recommendations only until the WoW runtime is integrated and tested.'
+                    : 'Reading device information directly from Android…'),
+            style: const TextStyle(color: muted, fontSize: 10),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _detectDevice,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('RESCAN DEVICE'),
+            ),
+          ),
+        ],
       ),
     );
   }
