@@ -529,8 +529,10 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
               icon: const Icon(Icons.add),
               label: const Text('ADD SERVER'),
               style: FilledButton.styleFrom(
-                backgroundColor: _serverGold,
-                foregroundColor: const Color(0xFF17120A),
+                backgroundColor: const Color(0xFF29231A),
+                foregroundColor: const Color(0xFFFFE2A1),
+                side: const BorderSide(color: Color(0xFFB58A43), width: 1.3),
+                shape: BeveledRectangleBorder(borderRadius: BorderRadius.circular(5)),
               ),
             ),
           ),
