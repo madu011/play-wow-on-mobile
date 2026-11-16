@@ -129,6 +129,19 @@ public class WowLKCompanionActivity extends FlutterActivity {
                     startActivity(new Intent(this, WowMobileActivity.class));
                     result.success(true);
                     break;
+                case "openNativeWowSettings":
+                    startActivity(new Intent(this, WowSettingsActivity.class));
+                    result.success(true);
+                    break;
+                case "openNativeContainerSettings":
+                    startActivity(new Intent(this, ContainerSettingsActivity.class));
+                    result.success(true);
+                    break;
+                case "openNativeControlsEditor":
+                    startActivity(new Intent(this, com.winlator.ControlsEditorActivity.class)
+                        .putExtra("profile_id", 0));
+                    result.success(true);
+                    break;
                 case "getDeviceInfo":
                     result.success(readBasicDeviceInfo());
                     break;
