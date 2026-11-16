@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'server_manager.dart';
 import 'game_folder_inspector.dart';
+import 'game_ui_preview.dart';
 
 void main() => runApp(const AzerothApp());
 
@@ -414,6 +415,20 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
             const SizedBox(height: 14),
             _classicTabStrip(),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GameUiPreviewPage()),
+              ),
+              icon: const Icon(Icons.dashboard_customize, size: 19),
+              label: const Text('OPEN CLASSIC IN-GAME UI PREVIEW'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: gold,
+                side: const BorderSide(color: gold),
+                minimumSize: const Size.fromHeight(46),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: .6, fontSize: 10),
+              ),
+            ),
             const SizedBox(height: 18),
             Container(
               height: 176,
