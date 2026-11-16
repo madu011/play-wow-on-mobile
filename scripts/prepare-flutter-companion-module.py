@@ -2,6 +2,7 @@
 """Copy the canonical Flutter companion sources into the generated add-to-app module."""
 from pathlib import Path
 import shutil
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_LIB = ROOT / "lib"
@@ -17,13 +18,19 @@ if TARGET_LIB.exists():
     shutil.rmtree(TARGET_LIB)
 shutil.copytree(SOURCE_LIB, TARGET_LIB)
 
-# Reuse the exact user-supplied Icecrown dragon artwork in the companion header.
-ICON_SOURCE = ROOT / "native-patches" / "app-icon" / "wow-lk-dragon.webp"
+# Fetch the exact PNG committed by the user on main (not the older WebP substitute).
+ICON_URL = "https://raw.githubusercontent.com/madu011/play-wow-on-mobile/main/file_0000000035e882109c3307bc96cfe6a9.png"
+ICON_DIR = ROOT / "native-patches" / "app-icon"
+ICON_DIR.mkdir(parents=True, exist_ok=True)
+ICON_SOURCE = ICON_DIR / "wow-lk-user-supplied.png"
+with urlopen(ICON_URL, timeout=60) as response:
+    payload = response.read()
+if not payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    raise SystemExit("The repository's supplied icon did not download as a valid PNG.")
+ICON_SOURCE.write_bytes(payload)
 ASSET_DIR = MODULE / "assets"
 ASSET_DIR.mkdir(parents=True, exist_ok=True)
-if not ICON_SOURCE.is_file():
-    raise SystemExit(f"Missing supplied WOW LK dragon icon: {ICON_SOURCE}")
-shutil.copyfile(ICON_SOURCE, ASSET_DIR / "wow-lk-dragon.webp")
+shutil.copyfile(ICON_SOURCE, ASSET_DIR / "wow-lk-user-supplied.png")
 
 (MODULE / "pubspec.yaml").write_text("""name: wowlk_companion
 description: WOW LK Flutter companion embedded in the native Android host.
@@ -48,7 +55,7 @@ flutter:
     iosBundleIdentifier: com.example.wowlkCompanion
   uses-material-design: true
   assets:
-    - assets/wow-lk-dragon.webp
+    - assets/wow-lk-user-supplied.png
 """, encoding="utf-8")
 
 print("Prepared Flutter add-to-app module from canonical root lib/ sources.")
