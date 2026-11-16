@@ -4,13 +4,36 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mpq_checksum_scanner.dart';
 import 'mpq_checksum_manifest.dart';
+
+class _SavedMpqBaseline {
+  const _SavedMpqBaseline({required this.name, required this.manifest});
+
+  final String name;
+  final MpqChecksumManifest manifest;
+
+  Map<String, Object> toJson() => {
+        'name': name,
+        'manifest': manifest.toJson(),
+      };
+
+  factory _SavedMpqBaseline.fromJson(Object? value) {
+    if (value is! Map<String, dynamic> || value['name'] is! String) {
+      throw const FormatException('Invalid saved baseline entry.');
+    }
+    final name = (value['name'] as String).trim();
+    if (name.isEmpty) throw const FormatException('Baseline name is empty.');
+    return _SavedMpqBaseline(
+      name: name,
+      manifest: MpqChecksumManifest.decode(jsonEncode(value['manifest'])),
+    );
+  }
+}
 
 class MpqManifestManager extends StatefulWidget {
   const MpqManifestManager({
@@ -27,12 +50,20 @@ class MpqManifestManager extends StatefulWidget {
 }
 
 class _MpqManifestManagerState extends State<MpqManifestManager> {
-  MpqChecksumManifest? _manifest;
+  List<_SavedMpqBaseline> _baselines = [];
+  String? _selectedName;
   bool _loading = true;
   String? _message;
 
   String get _storageKey =>
-      'mpq_manifest_${sha256.convert(utf8.encode(widget.folderPath))}';
+      'mpq_manifest_library_${sha256.convert(utf8.encode(widget.folderPath))}';
+
+  _SavedMpqBaseline? get _selected {
+    for (final item in _baselines) {
+      if (item.name == _selectedName) return item;
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -49,24 +80,78 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
   Future<void> _loadLocal() async {
     setState(() {
       _loading = true;
-      _manifest = null;
+      _baselines = [];
+      _selectedName = null;
     });
     final prefs = await SharedPreferences.getInstance();
     final source = prefs.getString(_storageKey);
-    MpqChecksumManifest? loaded;
+    final loaded = <_SavedMpqBaseline>[];
     if (source != null) {
       try {
-        loaded = MpqChecksumManifest.decode(source);
+        final decoded = jsonDecode(source);
+        if (decoded is! List) {
+          throw const FormatException('Baseline library must be a list.');
+        }
+        for (final item in decoded) {
+          loaded.add(_SavedMpqBaseline.fromJson(item));
+        }
       } catch (_) {
         await prefs.remove(_storageKey);
-        _message = 'Saved manifest was invalid and has been cleared.';
+        _message = 'Saved baseline library was invalid and has been cleared.';
       }
     }
     if (!mounted) return;
     setState(() {
-      _manifest = loaded;
+      _baselines = loaded;
+      _selectedName = loaded.isEmpty ? null : loaded.first.name;
       _loading = false;
     });
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _storageKey,
+      jsonEncode(_baselines.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  Future<String?> _askName({
+    required String title,
+    String initialValue = '',
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 48,
+          decoration: const InputDecoration(
+            labelText: 'Baseline name',
+            hintText: 'Clean install, backup before update...',
+          ),
+          onSubmitted: (value) =>
+              Navigator.of(dialogContext).pop(value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || result.trim().isEmpty) return null;
+    return result.trim();
   }
 
   Future<void> _saveBaseline() async {
@@ -75,25 +160,33 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
       _notify('No successful MPQ hashes to save.');
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, manifest.encode());
-    if (!mounted) return;
+    final name = await _askName(title: 'Save new baseline');
+    if (name == null || !mounted) return;
+    if (_baselines.any((item) => item.name.toLowerCase() == name.toLowerCase())) {
+      _notify('A baseline with this name already exists. Choose another name.');
+      return;
+    }
     setState(() {
-      _manifest = manifest;
-      _message = 'Baseline saved on this device.';
+      _baselines = [
+        ..._baselines,
+        _SavedMpqBaseline(name: name, manifest: manifest),
+      ];
+      _selectedName = name;
+      _message = 'Baseline "$name" saved on this device.';
     });
+    await _persist();
   }
 
   Future<void> _exportManifest() async {
-    final manifest = _manifest;
-    if (manifest == null) return;
+    final selected = _selected;
+    if (selected == null) return;
     try {
       await FilePicker.platform.saveFile(
-        dialogTitle: 'Export MPQ checksum manifest',
-        fileName: 'azeroth-mpq-manifest.json',
+        dialogTitle: 'Export MPQ checksum baseline',
+        fileName: 'azeroth-mpq-${selected.name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.json',
         type: FileType.custom,
         allowedExtensions: ['json'],
-        bytes: Uint8List.fromList(utf8.encode(manifest.encode())),
+        bytes: Uint8List.fromList(utf8.encode(selected.manifest.encode())),
       );
     } catch (error) {
       _notify('Export failed: $error');
@@ -116,16 +209,54 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
       if (manifest.entries.isEmpty) {
         throw const FormatException('Manifest contains no valid hashes.');
       }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_storageKey, manifest.encode());
       if (!mounted) return;
+      final name = await _askName(title: 'Name imported baseline');
+      if (name == null || !mounted) return;
+      if (_baselines.any((item) => item.name.toLowerCase() == name.toLowerCase())) {
+        _notify('A baseline with this name already exists. Choose another name.');
+        return;
+      }
       setState(() {
-        _manifest = manifest;
-        _message = 'Manifest imported and saved for this game folder.';
+        _baselines = [
+          ..._baselines,
+          _SavedMpqBaseline(name: name, manifest: manifest),
+        ];
+        _selectedName = name;
+        _message = 'Imported "$name" and saved it for this game folder.';
       });
+      await _persist();
     } catch (error) {
       _notify('Import failed: $error');
     }
+  }
+
+  Future<void> _deleteSelected() async {
+    final selected = _selected;
+    if (selected == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete baseline?'),
+        content: Text('Remove "${selected.name}" from this device?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _baselines = _baselines.where((item) => item.name != selected.name).toList();
+      _selectedName = _baselines.isEmpty ? null : _baselines.first.name;
+      _message = 'Baseline deleted.';
+    });
+    await _persist();
   }
 
   void _notify(String message) {
@@ -145,7 +276,8 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
         child: LinearProgressIndicator(),
       );
     }
-    final comparison = _manifest?.compare(widget.report);
+    final selected = _selected;
+    final comparison = selected?.manifest.compare(widget.report);
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(11),
@@ -161,19 +293,48 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
             children: [
               Icon(Icons.fact_check_outlined, color: gold, size: 17),
               SizedBox(width: 7),
-              Text('CHECKSUM MANIFEST',
+              Text('CHECKSUM BASELINE LIBRARY',
                   style: TextStyle(
                       color: gold, fontSize: 10, fontWeight: FontWeight.w900)),
             ],
           ),
           const SizedBox(height: 5),
           Text(
-            _manifest == null
-                ? 'No local baseline saved for this game folder.'
-                : 'Baseline: ${_manifest!.entries.length} files · '
-                    '${_manifest!.createdAt.toLocal()}',
+            '${_baselines.length} saved baseline(s) for this game folder',
             style: const TextStyle(color: muted, fontSize: 9),
           ),
+          if (_baselines.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            DropdownButtonFormField<String>(
+              value: _selectedName,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Select baseline',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              items: _baselines
+                  .map((item) => DropdownMenuItem(
+                        value: item.name,
+                        child: Text(item.name,
+                            overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(),
+              onChanged: (value) => setState(() => _selectedName = value),
+            ),
+            if (selected != null) ...[
+              const SizedBox(height: 5),
+              Text(
+                '${selected.manifest.entries.length} files · ${selected.manifest.createdAt.toLocal()}',
+                style: const TextStyle(color: muted, fontSize: 9),
+              ),
+            ],
+          ] else
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 9),
+              child: Text('No saved baselines yet. Save one after scanning MPQ files.',
+                  style: TextStyle(color: muted, fontSize: 10)),
+            ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -181,15 +342,19 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
             children: [
               OutlinedButton(
                 onPressed: _saveBaseline,
-                child: const Text('SAVE BASELINE'),
+                child: const Text('SAVE NEW'),
               ),
               OutlinedButton(
                 onPressed: _importManifest,
                 child: const Text('IMPORT JSON'),
               ),
               OutlinedButton(
-                onPressed: _manifest == null ? null : _exportManifest,
-                child: const Text('EXPORT JSON'),
+                onPressed: selected == null ? null : _exportManifest,
+                child: const Text('EXPORT'),
+              ),
+              OutlinedButton(
+                onPressed: selected == null ? null : _deleteSelected,
+                child: const Text('DELETE'),
               ),
             ],
           ),
@@ -227,7 +392,7 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
           ],
           const SizedBox(height: 7),
           const Text(
-            'This is a user-created snapshot, not an official Blizzard checksum list. A baseline made from an already modified or damaged client cannot prove the client is original.',
+            'These are user-created snapshots, not official Blizzard checksums. A baseline from an already modified or damaged client cannot prove that the client is original.',
             style: TextStyle(color: muted, fontSize: 9, height: 1.4),
           ),
         ],
