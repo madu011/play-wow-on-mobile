@@ -45,3 +45,13 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - No source-code implementation changes have been made in this continuation yet.
 - This file is the first progress-tracking commit for the continuation.
 - Next task: inspect the current branch tree and workflow definitions to resolve the Flutter/native-runtime integration question before touching application code.
+
+
+## 2026-11-16 architecture audit
+- Confirmed this branch contains two distinct Android delivery paths:
+  1. Flutter launcher CI (`.github/workflows/build-launcher-apk.yml`) builds the root Flutter project and uploads `play-wow-on-mobile-android`.
+  2. Native runtime CI (`.github/workflows/native-runtime-build.yml`) builds the pinned upstream project under `vendor/wow-mobile-engine` and runs `scripts/apply-wowlk-branding.py` before assembling the native APK.
+- The native workflow is triggered by pushes to this branch; the Flutter workflow is configured for pushes to `main` or manual dispatch.
+- The native engine is pinned to upstream commit `0c8068f617737d9c0fb6246f37b54f85b620b09d`.
+- This explains why the root README can describe the Flutter companion launcher while a separate CI workflow produces a native runtime APK. They are separate build targets, not proof that both have been integrated into one APK.
+- Next inspection: branding script, submodule tree, and root Flutter navigation/import/realm flows. Then choose and implement a clearly defined integration boundary without replacing either working build path.
