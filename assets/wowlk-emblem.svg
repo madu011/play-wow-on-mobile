@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06162f"/><stop offset=".55" stop-color="#063d73"/><stop offset="1" stop-color="#020817"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff0a6"/><stop offset=".45" stop-color="#d9a83f"/><stop offset="1" stop-color="#70400e"/></linearGradient>
+ <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset=".4" stop-color="#75e8ff"/><stop offset="1" stop-color="#1676d1"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="512" height="512" rx="100" fill="url(#bg)"/>
+<path d="M256 24 440 94 421 320 256 488 91 320 72 94Z" fill="#07152b" stroke="url(#gold)" stroke-width="15"/>
+<path d="M256 48 414 108 397 308 256 453 115 308 98 108Z" fill="none" stroke="#4c9bca" stroke-width="5"/>
+<path d="M256 104 294 174 366 139 338 218 405 256 329 278 350 365 278 319 256 410 234 319 162 365 183 278 107 256 174 218 146 139 218 174Z" fill="url(#ice)" stroke="#d9faff" stroke-width="5" filter="url(#glow)"/>
+<path d="M256 153 280 230 350 248 280 266 256 350 232 266 162 248 232 230Z" fill="#082c59" stroke="url(#gold)" stroke-width="9"/>
+<path d="M256 194 279 246 256 301 233 246Z" fill="url(#ice)" stroke="#f5ffff" stroke-width="4"/>
+<path d="M132 160 175 115 213 146 184 153 164 189 147 219 119 201Z M380 160 337 115 299 146 328 153 348 189 365 219 393 201Z" fill="#0b2442" stroke="url(#gold)" stroke-width="9"/>
+<path d="M163 133 198 91 235 122 213 126 190 155Z M349 133 314 91 277 122 299 126 322 155Z" fill="url(#ice)" stroke="#e5fbff" stroke-width="5"/>
+<path d="M120 365 166 330 210 358 256 432 302 358 346 330 392 365 256 475Z" fill="#071b35" stroke="url(#gold)" stroke-width="8"/>
+<circle cx="256" cy="250" r="15" fill="#d9ffff" filter="url(#glow)"/>
+</svg>
