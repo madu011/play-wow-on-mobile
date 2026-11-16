@@ -213,6 +213,7 @@ class MainActivity : FlutterActivity() {
         if (!hasRead) throw SecurityException("Saved folder permission has expired. Tap GRANT READ / WRITE ACCESS and select the WoW folder again.")
         val rootEntries = children(rootUri)
         val exe = rootEntries.any { it.name.equals("wow.exe", true) || it.name.equals("wow-64.exe", true) }
+        val detectedFiles = rootEntries.map { it.name }.toMutableList()
         // Some OEM document providers return an empty or generic MIME type for directories.
         val data = rootEntries.firstOrNull {
             it.name.equals("Data", true) &&
@@ -251,6 +252,7 @@ class MainActivity : FlutterActivity() {
                         }
                         if (entry.name.endsWith(".mpq", true)) {
                             mpqs.add(relative)
+                            detectedFiles.add("Data/$relative")
                             totalBytes += entry.size
                             if (entry.size == 0L) empty.add(relative)
                         }
@@ -272,7 +274,8 @@ class MainActivity : FlutterActivity() {
             "missingCoreArchives" to core.filter { !found.contains(it) },
             "totalArchiveBytes" to totalBytes,
             "notes" to if (data == null) listOf("Data folder not found or cannot be read through Android folder access.") else emptyList<String>(),
-            "mpqPaths" to mpqs
+            "mpqPaths" to mpqs,
+            "detectedFiles" to detectedFiles.distinct().sorted()
         )
     }
 
