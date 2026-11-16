@@ -323,6 +323,92 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
     return '$value B';
   }
 
+  Widget _buildDetailedComparison(MpqDetailedComparison comparison) {
+    final changed = comparison.changes
+        .where((item) => item.type != MpqFileChangeType.unchanged)
+        .toList();
+    final labels = {
+      MpqFileChangeType.changed: 'CHANGED',
+      MpqFileChangeType.added: 'ADDED',
+      MpqFileChangeType.missing: 'MISSING',
+      MpqFileChangeType.unreadable: 'READ ERROR',
+      MpqFileChangeType.unchanged: 'UNCHANGED',
+    };
+    final colors = {
+      MpqFileChangeType.changed: Colors.orangeAccent,
+      MpqFileChangeType.added: Colors.greenAccent,
+      MpqFileChangeType.missing: Colors.redAccent,
+      MpqFileChangeType.unreadable: Colors.deepOrangeAccent,
+      MpqFileChangeType.unchanged: _muted,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('PER-FILE DIFFERENCES',
+            style: TextStyle(
+                color: _gold, fontSize: 9, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 5,
+          children: [
+            _changeBadge('Changed', comparison.count(MpqFileChangeType.changed), Colors.orangeAccent),
+            _changeBadge('Added', comparison.count(MpqFileChangeType.added), Colors.greenAccent),
+            _changeBadge('Missing', comparison.count(MpqFileChangeType.missing), Colors.redAccent),
+            _changeBadge('Read errors', comparison.count(MpqFileChangeType.unreadable), Colors.deepOrangeAccent),
+            _changeBadge('Unchanged', comparison.count(MpqFileChangeType.unchanged), _muted),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (changed.isEmpty)
+          const Text('No file differences detected.',
+              style: TextStyle(color: Colors.greenAccent, fontSize: 9))
+        else ...[
+          ...changed.take(50).map((item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        labels[item.type]!,
+                        style: TextStyle(
+                            color: colors[item.type],
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(item.path,
+                          style: const TextStyle(color: Colors.white70, fontSize: 8)),
+                    ),
+                  ],
+                ),
+              )),
+          if (changed.length > 50)
+            Text(
+              'Showing first 50 of ${changed.length} differences.',
+              style: const TextStyle(color: _muted, fontSize: 8),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _changeBadge(String label, int count, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withOpacity(0.45)),
+          color: color.withOpacity(0.08),
+        ),
+        child: Text('$label: $count',
+            style: TextStyle(
+                color: color, fontSize: 8, fontWeight: FontWeight.w800)),
+      );
+
   Widget _buildComparisonSelector() {
     final previousEntries = _entries.skip(1).toList();
     final selected = previousEntries.any((entry) => entry.id == _comparisonEntryId)
@@ -407,9 +493,20 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
           ),
           const SizedBox(height: 7),
           Text(
-            'Latest scan compared with the selected older scan. Positive time means the latest scan took longer. Summary-only comparison; file hashes are not retained in history.',
+            'Latest scan compared with the selected older scan. Positive time means the latest scan took longer.',
             style: const TextStyle(color: _muted, fontSize: 8, height: 1.35),
           ),
+          const SizedBox(height: 9),
+          if (_entries.first.fingerprints.isEmpty ||
+              previous.fingerprints.isEmpty)
+            const Text(
+              'Per-file comparison is unavailable for this scan. Older history entries created before detailed snapshots may contain summary data only.',
+              style: TextStyle(color: _muted, fontSize: 8, height: 1.35),
+            )
+          else
+            _buildDetailedComparison(
+              MpqDetailedComparison.between(_entries.first, previous),
+            ),
         ],
       ),
     );
