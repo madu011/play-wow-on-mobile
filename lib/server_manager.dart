@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -5,6 +6,114 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class RealmDiagnosticReport {
+  const RealmDiagnosticReport({
+    required this.dnsSucceeded,
+    required this.addresses,
+    required this.dnsMilliseconds,
+    required this.tcpSucceeded,
+    required this.tcpMilliseconds,
+    this.error,
+  });
+
+  final bool dnsSucceeded;
+  final List<String> addresses;
+  final int dnsMilliseconds;
+  final bool tcpSucceeded;
+  final int? tcpMilliseconds;
+  final String? error;
+
+  List<String> get displayLines => [
+        'DNS: ${dnsSucceeded ? 'Resolved' : 'Failed'}'
+            '${dnsMilliseconds >= 0 ? ' (${dnsMilliseconds} ms)' : ''}',
+        if (addresses.isNotEmpty) 'Address: ${addresses.join(', ')}',
+        'TCP ${tcpSucceeded ? ':✓ Connected' : ':✗ Failed'}'
+            '${tcpMilliseconds == null ? '' : ' (${tcpMilliseconds} ms)'}',
+        if (error != null && error!.isNotEmpty) 'Details: $error',
+        if (tcpSucceeded)
+          'The port is reachable; this does not confirm WoW login or realm compatibility.',
+      ];
+}
+
+class RealmDiagnostics {
+  static Future<RealmDiagnosticReport> run(
+    String host,
+    int port, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final dnsWatch = Stopwatch()..start();
+    late final List<InternetAddress> addresses;
+    try {
+      addresses = await InternetAddress.lookup(host).timeout(timeout);
+    } catch (error) {
+      dnsWatch.stop();
+      return RealmDiagnosticReport(
+        dnsSucceeded: false,
+        addresses: const [],
+        dnsMilliseconds: dnsWatch.elapsedMilliseconds,
+        tcpSucceeded: false,
+        tcpMilliseconds: null,
+        error: _friendlyError(error),
+      );
+    }
+    dnsWatch.stop();
+
+    if (addresses.isEmpty) {
+      return RealmDiagnosticReport(
+        dnsSucceeded: false,
+        addresses: const [],
+        dnsMilliseconds: dnsWatch.elapsedMilliseconds,
+        tcpSucceeded: false,
+        tcpMilliseconds: null,
+        error: 'DNS returned no IP addresses.',
+      );
+    }
+
+    final tcpWatch = Stopwatch()..start();
+    Socket? socket;
+    Object? lastError;
+    try {
+      for (final address in addresses) {
+        try {
+          socket = await Socket.connect(address, port, timeout: timeout);
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      tcpWatch.stop();
+      if (socket != null) {
+        return RealmDiagnosticReport(
+          dnsSucceeded: true,
+          addresses: addresses.map((address) => address.address).toList(),
+          dnsMilliseconds: dnsWatch.elapsedMilliseconds,
+          tcpSucceeded: true,
+          tcpMilliseconds: tcpWatch.elapsedMilliseconds,
+        );
+      }
+      return RealmDiagnosticReport(
+        dnsSucceeded: true,
+        addresses: addresses.map((address) => address.address).toList(),
+        dnsMilliseconds: dnsWatch.elapsedMilliseconds,
+        tcpSucceeded: false,
+        tcpMilliseconds: tcpWatch.elapsedMilliseconds,
+        error: _friendlyError(lastError ?? 'Connection failed.'),
+      );
+    } finally {
+      socket?.destroy();
+    }
+  }
+
+  static String _friendlyError(Object error) {
+    if (error is SocketException) {
+      final message = error.message.trim();
+      return message.isEmpty ? 'Network connection error.' : message;
+    }
+    if (error is TimeoutException) return 'Connection timed out.';
+    return error.toString();
+  }
+}
 
 const _serverGold = Color(0xFFE2B45D);
 const _serverPanel = Color(0xFF141C2B);
@@ -149,6 +258,7 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
   String? _inputError;
   final Set<String> _testingKeys = {};
   final Map<String, String> _connectionResults = {};
+  final Map<String, RealmDiagnosticReport> _diagnosticReports = {};
 
   @override
   void initState() {
@@ -318,21 +428,21 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     setState(() {
       _testingKeys.add(profile.key);
       _connectionResults.remove(profile.key);
+      _diagnosticReports.remove(profile.key);
     });
-    Socket? socket;
     try {
-      socket = await Socket.connect(
-        profile.host,
-        profile.port,
-        timeout: const Duration(seconds: 5),
-      );
+      final report = await RealmDiagnostics.run(profile.host, profile.port);
       if (!mounted) return;
-      setState(() => _connectionResults[profile.key] = 'TCP connection successful');
-    } catch (_) {
+      setState(() {
+        _diagnosticReports[profile.key] = report;
+        _connectionResults[profile.key] = report.tcpSucceeded
+            ? 'TCP connection successful'
+            : 'Connection diagnostics found a problem';
+      });
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _connectionResults[profile.key] = 'Could not reach this address and port');
+      setState(() => _connectionResults[profile.key] = 'Diagnostic error: $error');
     } finally {
-      socket?.destroy();
       if (mounted) setState(() => _testingKeys.remove(profile.key));
     }
   }
@@ -492,6 +602,20 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
                                 ? Colors.greenAccent
                                 : Colors.orangeAccent,
                             fontSize: 10,
+                          ),
+                        ),
+                      if (_diagnosticReports.containsKey(profile.key))
+                        ..._diagnosticReports[profile.key]!.displayLines.map(
+                          (line) => Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Text(
+                              line,
+                              style: const TextStyle(
+                                color: _serverMuted,
+                                fontSize: 9,
+                                height: 1.25,
+                              ),
+                            ),
                           ),
                         ),
                     ],
