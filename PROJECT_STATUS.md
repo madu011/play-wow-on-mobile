@@ -150,3 +150,10 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Corrected the native CI ordering so Flutter 3.35.7 is installed and the Flutter AAR is built before the native patch script checks for the generated Maven artifact.
 - Added the official Flutter engine Maven repository alongside the generated local Flutter AAR repository so the native Gradle app can resolve the Flutter embedding dependency.
 - The integrated build is now the first validation of this add-to-app boundary; resolve any dependency-coordinate or Gradle compatibility issues from actual CI output before claiming integration complete.
+
+
+## 2026-11-16 Flutter add-to-app module preparation
+- The root Flutter project is a standard Flutter application, not a Flutter module. It cannot be assumed to emit an AAR directly.
+- CI now creates a dedicated Flutter module host, copies the canonical root lib/ sources into it, and writes a module pubspec with the same runtime dependencies. This preserves the existing root Flutter app workflow while producing a proper add-to-app AAR for the native host.
+- Updated the native integration patch to discover the generated release AAR Maven coordinates from its POM instead of hard-coding group/version assumptions.
+- The integrated build remains pending; check the module generation, AAR build, dependency resolution, Java compilation, and final signed APK stages before claiming success.

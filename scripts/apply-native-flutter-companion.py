@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / "vendor" / "wow-mobile-engine"
-AAR_POM = ROOT / "build" / "host" / "outputs" / "repo" / "com" / "example" / "myapp" / "flutter_release" / "1.0.0" / "flutter_release-1.0.0.pom"
+AAR_REPO = ROOT / "flutter_companion_module" / "build" / "host" / "outputs" / "repo"
 
 def replace_once(path: Path, old: str, new: str):
     content = path.read_text(encoding="utf-8")
@@ -17,16 +17,29 @@ def replace_once(path: Path, old: str, new: str):
         raise SystemExit(f"Expected one patch anchor in {path}, found {count}")
     path.write_text(content.replace(old, new), encoding="utf-8")
 
-if not AAR_POM.is_file():
-    raise SystemExit(f"Flutter AAR not found: {AAR_POM}. Check flutter build aar output and module coordinates.")
+import xml.etree.ElementTree as ET
+
+pom_files = list(AAR_REPO.rglob("flutter_release-*.pom")) if AAR_REPO.is_dir() else []
+if len(pom_files) != 1:
+    raise SystemExit(f"Expected one Flutter release AAR POM in {AAR_REPO}, found {len(pom_files)}")
+pom_root = ET.parse(pom_files[0]).getroot()
+def pom_value(name):
+    node = pom_root.find(name)
+    if node is None:
+        node = pom_root.find("{*}" + name)
+    return node.text.strip() if node is not None and node.text else None
+coordinates = [pom_value("groupId"), pom_value("artifactId"), pom_value("version")]
+if not all(coordinates):
+    raise SystemExit(f"Unable to read Flutter AAR Maven coordinates from {pom_files[0]}")
+aar_dependency = ":".join(coordinates)
 
 root_gradle = NATIVE / "build.gradle"
 replace_once(root_gradle, "allprojects {\n    repositories {\n",
-             'allprojects {\n    repositories {\n        maven { url "$rootDir/../../build/host/outputs/repo" }\n        maven { url "https://storage.googleapis.com/download.flutter.io" }\n')
+             'allprojects {\n    repositories {\n        maven { url "$rootDir/../../flutter_companion_module/build/host/outputs/repo" }\n        maven { url "https://storage.googleapis.com/download.flutter.io" }\n')
 
 app_gradle = NATIVE / "app" / "build.gradle"
 replace_once(app_gradle, "dependencies {\n",
-             "dependencies {\n    implementation 'com.example.myapp:flutter_release:1.0.0'\n")
+             "dependencies {\n    implementation '" + aar_dependency + "'\n")
 
 manifest = NATIVE / "app" / "src" / "main" / "AndroidManifest.xml"
 replace_once(
@@ -115,7 +128,7 @@ public class WowLKCompanionActivity extends FlutterActivity {
         info.put("androidVersion", Build.VERSION.RELEASE);
         info.put("sdkInt", Build.VERSION.SDK_INT);
         info.put("cpuCores", Runtime.getRuntime().availableProcessors());
-        info.put("supportedAbis", Build.SUPPORTED_ABIS);
+        info.put("supportedAbis", java.util.Arrays.asList(Build.SUPPORTED_ABIS));
         info.put("totalRamMb", (int) (memory.totalMem / (1024L * 1024L)));
         info.put("availableRamMb", (int) (memory.availMem / (1024L * 1024L)));
         info.put("gpuVendor", "Not yet bridged");

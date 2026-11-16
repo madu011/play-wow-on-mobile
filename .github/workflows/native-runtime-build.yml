@@ -59,10 +59,18 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Create Flutter companion module host
+        run: flutter create --template=module --org com.example --project-name wowlk_companion flutter_companion_module
+
+      - name: Prepare Flutter companion module sources
+        run: python3 scripts/prepare-flutter-companion-module.py
+
       - name: Resolve Flutter companion dependencies
+        working-directory: flutter_companion_module
         run: flutter pub get
 
       - name: Build Flutter companion Android archive
+        working-directory: flutter_companion_module
         run: flutter build aar --no-debug --no-profile
 
       - name: Integrate Flutter companion into native Android app
