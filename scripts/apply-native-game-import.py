@@ -46,42 +46,13 @@ activity_result = """
         int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         try {
             getContentResolver().takePersistableUriPermission(treeUri, flags);
-        } catch (SecurityException error) {
-            Toast.makeText(this, "Android could not keep access to that folder.", Toast.LENGTH_LONG).show();
-            return;
+            File originalGameFolder = WowGameFolderImporter.resolveAndValidateTree(this, treeUri);
+            preferences.edit().putString(PREF_GAME_FOLDER, originalGameFolder.getAbsolutePath()).apply();
+            updateStatus();
+            Toast.makeText(this, "Original WoW folder linked. No game files were copied.", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            Toast.makeText(this, error.getMessage() == null ? "Could not access the original WoW folder." : error.getMessage(), Toast.LENGTH_LONG).show();
         }
-
-        importCancelled = new AtomicBoolean(false);
-        ProgressDialog progress = new ProgressDialog(this);
-        progress.setTitle("Importing WoW client");
-        progress.setMessage("Preparing game folder...");
-        progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        progress.setCancelable(false);
-        progress.setButton(ProgressDialog.BUTTON_NEGATIVE, "Cancel", (dialog, which) -> importCancelled.set(true));
-        progress.show();
-
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                File imported = WowGameFolderImporter.importTree(
-                    this, treeUri, importCancelled,
-                    (path, copied, total) -> runOnUiThread(() ->
-                        progress.setMessage("Copying " + path + "\\n" +
-                            (copied / (1024L * 1024L)) + " MB copied" +
-                            (total > 0 ? " / " + (total / (1024L * 1024L)) + " MB" : "")))
-                );
-                runOnUiThread(() -> {
-                    progress.dismiss();
-                    preferences.edit().putString(PREF_GAME_FOLDER, imported.getAbsolutePath()).apply();
-                    updateStatus();
-                    Toast.makeText(this, "WoW client imported successfully.", Toast.LENGTH_LONG).show();
-                });
-            } catch (Exception error) {
-                runOnUiThread(() -> {
-                    progress.dismiss();
-                    Toast.makeText(this, error.getMessage() == null ? "WoW import failed." : error.getMessage(), Toast.LENGTH_LONG).show();
-                });
-            }
-        });
     }
 
 """
