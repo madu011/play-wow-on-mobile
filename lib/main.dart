@@ -707,10 +707,10 @@ class _LauncherPageState extends State<LauncherPage> {
                     style: TextStyle(fontWeight: FontWeight.w900,
                         letterSpacing: 1)),
                 style: FilledButton.styleFrom(
-                  backgroundColor: gold,
-                  foregroundColor: const Color(0xFF17120A),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
+                  backgroundColor: const Color(0xFF29231A),
+                  foregroundColor: const Color(0xFFFFE2A1),
+                  side: const BorderSide(color: Color(0xFFE0B75E), width: 1.5),
+                  shape: BeveledRectangleBorder(borderRadius: BorderRadius.circular(5)),
                 ),
               ),
             ),
