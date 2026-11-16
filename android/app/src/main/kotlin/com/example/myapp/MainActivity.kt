@@ -44,7 +44,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
-                when (call.method) {\n                    "getDeviceInfo" -> result.success(getDeviceInfo())
+                when (call.method) {
+                    "getDeviceInfo" -> result.success(getDeviceInfo())
                     "pickGameFolderTree" -> {
                         if (pendingPickerResult != null) {
                             result.error("PICKER_BUSY", "Folder picker is already open.", null)
