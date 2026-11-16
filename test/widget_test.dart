@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:myapp/main.dart';
+import 'package:play_wow_on_mobile/main.dart';
 
 void main() {
   testWidgets('WOW LK launcher renders its main screen', (WidgetTester tester) async {
