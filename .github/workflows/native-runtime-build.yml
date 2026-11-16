@@ -1,0 +1,68 @@
+name: Native WoW runtime build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - runtime/native-engine-import
+    paths:
+      - '.gitmodules'
+      - 'vendor/wow-mobile-engine'
+      - '.github/workflows/native-runtime-build.yml'
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '17'
+  ANDROID_PLATFORM: '34'
+  ANDROID_NDK_VERSION: '24.0.8215888'
+  CMAKE_VERSION: '3.22.1'
+
+jobs:
+  build-native-engine:
+    name: Build pinned WoW Mobile native engine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout migration branch and native engine
+        uses: actions/checkout@v4
+        with:
+          ref: runtime/native-engine-import
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned upstream source
+        shell: bash
+        run: |
+          test -f vendor/wow-mobile-engine/gradlew
+          test -f vendor/wow-mobile-engine/app/src/main/cpp/CMakeLists.txt
+          git -C vendor/wow-mobile-engine rev-parse HEAD
+          test "$(git -C vendor/wow-mobile-engine rev-parse HEAD)" = "0c8068f617737d9c0fb6246f37b54f85b620b09d"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
+
+      - name: Build upstream native runtime APK
+        working-directory: vendor/wow-mobile-engine
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Upload unsigned native runtime APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wow-mobile-native-runtime-unsigned
+          path: vendor/wow-mobile-engine/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
