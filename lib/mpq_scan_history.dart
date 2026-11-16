@@ -1,10 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -88,54 +86,6 @@ class MpqScanHistoryEntry {
       };
 
   String get id => scannedAt.microsecondsSinceEpoch.toString();
-}
-
-class MpqScanHistoryArchive {
-  static const format = 'azeroth-mpq-scan-history';
-  static const version = 1;
-
-  static String encode(List<MpqScanHistoryEntry> entries, {DateTime? exportedAt}) =>
-      const JsonEncoder.withIndent('  ').convert({
-        'format': format,
-        'version': version,
-        'exportedAt': (exportedAt ?? DateTime.now()).toUtc().toIso8601String(),
-        'entries': entries.map((entry) => entry.toJson()).toList(),
-      });
-
-  static List<MpqScanHistoryEntry> decode(String source) {
-    final decoded = jsonDecode(source);
-    if (decoded is! Map<String, dynamic> ||
-        decoded['format'] != format ||
-        decoded['version'] != version ||
-        decoded['entries'] is! List) {
-      throw const FormatException('Unsupported or invalid MPQ scan history file.');
-    }
-    final entries = <MpqScanHistoryEntry>[];
-    final seen = <String>{};
-    for (final item in decoded['entries'] as List) {
-      if (item is! Map<String, dynamic>) {
-        throw const FormatException('Invalid scan history entry.');
-      }
-      final entry = MpqScanHistoryEntry.fromJson(item);
-      if (entry.durationMs < 0 || entry.discoveredFiles < 0 ||
-          entry.completedFiles < 0 || entry.successCount < 0 ||
-          entry.errorCount < 0 || entry.totalBytes < 0 ||
-          (entry.fingerprints.isNotEmpty &&
-              entry.completedFiles != entry.fingerprints.length)) {
-        throw const FormatException('Scan history entry contains invalid counts.');
-      }
-      for (final fingerprint in entry.fingerprints) {
-        if (fingerprint.relativePath.isEmpty || fingerprint.sizeBytes < 0 ||
-            (fingerprint.sha256 != null &&
-                !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(fingerprint.sha256!))) {
-          throw const FormatException('Scan history contains an invalid fingerprint.');
-        }
-      }
-      if (seen.add(entry.id)) entries.add(entry);
-    }
-    entries.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
-    return entries;
-  }
 }
 
 enum MpqFileChangeType { unchanged, changed, added, missing, unreadable, unverified }
