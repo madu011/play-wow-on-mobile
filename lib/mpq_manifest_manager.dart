@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +29,8 @@ class _MpqManifestManagerState extends State<MpqManifestManager> {
   bool _loading = true;
   String? _message;
 
-  String get _storageKey => 'mpq_manifest_${widget.folderPath.hashCode}';
+  String get _storageKey =>
+      'mpq_manifest_${sha256.convert(utf8.encode(widget.folderPath))}';
 
   @override
   void initState() {
