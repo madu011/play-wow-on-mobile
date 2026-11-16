@@ -13,7 +13,18 @@ The launcher includes a **Server Manager** for saving multiple WotLK realmlist e
 
 Profiles are stored locally on the Android device using shared preferences.
 
-### Realm backup: import and export
+#
+## Realm connection diagnostics
+
+The Server Manager connection-test control now runs two separate checks:
+
+1. **DNS resolution** — asks the device's resolver for IP addresses for the saved hostname.
+2. **TCP reachability** — attempts to open a TCP connection to the configured host and port, with a five-second timeout.
+3. **Timing and error details** — shows DNS and TCP elapsed time and a network error message when available.
+
+A successful TCP check only means that the selected address and port accepted a TCP connection at test time. It does **not** prove that WoW authentication works, that the realm is online, or that the Android game client is compatible. DNS or TCP failures can also be caused by the current Wi-Fi/mobile network, firewall rules, or temporary server downtime.
+
+## Realm backup: import and export
 
 Use the **IMPORT** and **EXPORT** controls in Server Manager to move saved realm profiles between devices.
 
