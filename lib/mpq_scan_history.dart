@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -88,7 +89,7 @@ class _MpqScanHistoryState extends State<MpqScanHistory> {
   bool _loading = true;
   String? _error;
 
-  String get _key => 'mpq_scan_history_${widget.folderPath.hashCode}';
+  String get _key => 'mpq_scan_history_${sha256.convert(utf8.encode(widget.folderPath))}';
 
   @override
   void initState() {
