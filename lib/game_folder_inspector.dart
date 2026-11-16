@@ -198,7 +198,10 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
   }
 
   void _refresh() {
-    setState(() => _report = GameFolderReport.inspect(widget.folderPath));
+    setState(() {
+      _report = GameFolderReport.inspect(widget.folderPath);
+      _checksumFuture = null;
+    });
   }
 
   @override
