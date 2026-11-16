@@ -108,11 +108,13 @@ class _LauncherPageState extends State<LauncherPage> {
   final GlobalKey _gameSectionKey = GlobalKey();
   final GlobalKey _serverSectionKey = GlobalKey();
   final GlobalKey _toolsSectionKey = GlobalKey();
+  final ScrollController _pageScrollController = ScrollController();
   static const _storageChannel = MethodChannel('wow.lk/storage');
 
   @override
   void initState() {
     super.initState();
+    _pageScrollController.addListener(_syncSelectedTabToScroll);
     _storageChannel.setMethodCallHandler(_handleStorageMethodCall);
     _loadSavedGameAccess();
     _initializePreferences();
@@ -438,11 +440,36 @@ class _LauncherPageState extends State<LauncherPage> {
     if (target != null) {
       Scrollable.ensureVisible(
         target,
-        duration: const Duration(milliseconds: 420),
+        duration: const Duration(milliseconds: 520),
         curve: Curves.easeInOutCubic,
-        alignment: .04,
+        alignment: .035,
       );
     }
+  }
+
+  // Keep the top navigation highlight synchronized when the user scrolls manually.
+  void _syncSelectedTabToScroll() {
+    if (!mounted) return;
+    final sections = <GlobalKey>[_gameSectionKey, _serverSectionKey, _toolsSectionKey];
+    var activeIndex = 0;
+    for (var i = 0; i < sections.length; i++) {
+      final context = sections[i].currentContext;
+      final renderObject = context?.findRenderObject();
+      if (renderObject is RenderBox && renderObject.attached) {
+        final top = renderObject.localToGlobal(Offset.zero).dy;
+        if (top <= 230) activeIndex = i;
+      }
+    }
+    if (activeIndex != selectedNavTab) {
+      setState(() => selectedNavTab = activeIndex);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageScrollController.removeListener(_syncSelectedTabToScroll);
+    _pageScrollController.dispose();
+    super.dispose();
   }
 
   void showInfo(String title, String message) {
@@ -487,6 +514,7 @@ class _LauncherPageState extends State<LauncherPage> {
           ),
           SafeArea(
             child: ListView(
+          controller: _pageScrollController,
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
           children: [
             Row(
@@ -520,7 +548,7 @@ class _LauncherPageState extends State<LauncherPage> {
                 IconButton(
                   onPressed: () => showInfo(
                     'About WOW LK',
-                    'A community launcher prototype. The Windows game runtime and graphics compatibility layer are not bundled in this first build.',
+                    'The Winlator-based native runtime is included in this WOW LK app. Actual game launch and device compatibility still need physical-phone testing.',
                   ),
                   icon: const Icon(Icons.info_outline, color: muted),
                 ),
@@ -840,7 +868,7 @@ class _LauncherPageState extends State<LauncherPage> {
                   }
                 },
                 icon: const Icon(Icons.play_arrow, size: 28),
-                label: const Text('OPEN GAME ENGINE',
+                label: const Text('LAUNCH WOW LK RUNTIME',
                     style: TextStyle(fontWeight: FontWeight.w900,
                         letterSpacing: 1)),
                 style: FilledButton.styleFrom(
@@ -853,7 +881,7 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
             const SizedBox(height: 13),
             const Center(
-              child: Text('LAUNCHER PREVIEW · GAME ENGINE INTEGRATION PENDING',
+              child: Text('WINLATOR RUNTIME INCLUDED · DEVICE GAMEPLAY TEST PENDING',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: muted, fontSize: 9, letterSpacing: 1)),
             ),
