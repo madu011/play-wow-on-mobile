@@ -573,7 +573,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: gold.withValues(alpha: .45)),
                   ),
-                  child: const Icon(Icons.shield_moon, color: gold, size: 29),
+                  child: ClipRRect(\n                    borderRadius: BorderRadius.circular(11),\n                    child: Image.asset('assets/wow-lk-dragon.webp', fit: BoxFit.cover),\n                  ),
                 ),
                 const SizedBox(width: 13),
                 const Expanded(
@@ -664,11 +664,22 @@ class _LauncherPageState extends State<LauncherPage> {
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
                     icon: const Icon(Icons.folder_open),
-                    label: const Text('GRANT READ / WRITE ACCESS'),
+                    label: const Text('GRANT READ ACCESS'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
                       side: const BorderSide(color: gold),
                       minimumSize: const Size.fromHeight(46),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  OutlinedButton.icon(
+                    onPressed: _requestGameFolderAccess,
+                    icon: const Icon(Icons.edit_document),
+                    label: const Text('GRANT WRITE ACCESS'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gold,
+                      side: const BorderSide(color: gold),
+                      minimumSize: const Size.fromHeight(44),
                     ),
                   ),
                   const SizedBox(height: 9),

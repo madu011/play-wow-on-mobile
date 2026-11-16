@@ -17,6 +17,14 @@ if TARGET_LIB.exists():
     shutil.rmtree(TARGET_LIB)
 shutil.copytree(SOURCE_LIB, TARGET_LIB)
 
+# Reuse the exact user-supplied Icecrown dragon artwork in the companion header.
+ICON_SOURCE = ROOT / "native-patches" / "app-icon" / "wow-lk-dragon.webp"
+ASSET_DIR = MODULE / "assets"
+ASSET_DIR.mkdir(parents=True, exist_ok=True)
+if not ICON_SOURCE.is_file():
+    raise SystemExit(f"Missing supplied WOW LK dragon icon: {ICON_SOURCE}")
+shutil.copyfile(ICON_SOURCE, ASSET_DIR / "wow-lk-dragon.webp")
+
 (MODULE / "pubspec.yaml").write_text("""name: wowlk_companion
 description: WOW LK Flutter companion embedded in the native Android host.
 publish_to: 'none'
@@ -39,6 +47,8 @@ flutter:
     androidPackage: com.example.wowlk_companion
     iosBundleIdentifier: com.example.wowlkCompanion
   uses-material-design: true
+  assets:
+    - assets/wow-lk-dragon.webp
 """, encoding="utf-8")
 
 print("Prepared Flutter add-to-app module from canonical root lib/ sources.")
