@@ -88,5 +88,4 @@ public final class WowGameFolderImporter {
             throw new IOException("Required WoW game file is missing, empty, or unreadable: " + relativePath);
         }
     }
-    }
 }
