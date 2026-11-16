@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'server_manager.dart';
+import 'game_folder_inspector.dart';
 
 void main() => runApp(const AzerothApp());
 
@@ -362,6 +363,30 @@ class _LauncherPageState extends State<LauncherPage> {
   }
 
 
+  Future<void> _refreshGameLocales() async {
+    final uri = gameTreeUri;
+    if (uri == null) return;
+    try {
+      final report = await _storageChannel.invokeMapMethod<String, dynamic>(
+        'scanGameTree',
+        {'treeUri': uri},
+      );
+      final locales = (report?['localeFolders'] as List? ?? const []).cast<String>();
+      if (!mounted) return;
+      setState(() {
+        gameLocales = locales;
+        if (locales.isNotEmpty &&
+            (selectedLocale == null || !locales.contains(selectedLocale))) {
+          selectedLocale = locales.first;
+        }
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      showInfo('Game folder access issue',
+          error.message ?? 'Android could not list the selected WoW folder. Please grant access again.');
+    }
+  }
+
   Future<String?> _chooseGameLocale() async => selectedLocale ?? 'enUS';
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
@@ -667,6 +692,10 @@ class _LauncherPageState extends State<LauncherPage> {
                 ],
               ),
             ),
+            if (gameTreeUri != null && gameFolder != null) ...[
+              const SizedBox(height: 14),
+              GameFolderInspector(folderPath: gameFolder!, treeUri: gameTreeUri),
+            ],
             const SizedBox(height: 20),
             Container(key: _serverSectionKey, child: _sectionTitle('SERVER MANAGER')),
             ServerManagerCard(
