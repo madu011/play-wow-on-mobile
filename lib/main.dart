@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'server_manager.dart';
+import 'game_folder_inspector.dart';
 
 void main() => runApp(const AzerothApp());
 
@@ -239,6 +240,10 @@ class _LauncherPageState extends State<LauncherPage> {
                 ],
               ),
             ),
+            if (gameFolder != null) ...[
+              const SizedBox(height: 16),
+              GameFolderInspector(folderPath: gameFolder!),
+            ],
             const SizedBox(height: 20),
             _sectionTitle('SERVER MANAGER'),
             ServerManagerCard(
