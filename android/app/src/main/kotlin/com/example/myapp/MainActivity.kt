@@ -216,10 +216,10 @@ class MainActivity : FlutterActivity() {
                             entry.name.substring(2).all { it.isLetter() } && entry.name.substring(2).all { it.isUpperCase() }) {
                             // Keep the locale directory visible even when a document provider
                             // reports an unknown archive size; file presence is the key check.
-                            val localeFiles = children(entry.uri)
-                            if (localeFiles.any { it.name.equals("locale.MPQ", true) && it.mime != DocumentsContract.Document.MIME_TYPE_DIR }) {
-                                locales.add(entry.name)
-                            }
+                            // Android document providers can return a null or generic MIME type
+                            // for MPQ files. Detect the locale from the standard folder name;
+                            // verify locale.MPQ separately as a presence check, never as access permission.
+                            locales.add(entry.name)
                         }
                         walk(entry.uri, relative, depth + 1)
                     } else {
@@ -261,7 +261,7 @@ class MainActivity : FlutterActivity() {
             it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR
         } ?: return false
         val localeFolders = children(data.uri).filter {
-            it.mime == DocumentsContract.Document.MIME_TYPE_DIR &&
+            (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank()) &&
                 it.name.length == 4 &&
                 it.name.substring(0, 2).all { c -> c.isLetter() && c.isLowerCase() } &&
                 it.name.substring(2).all { c -> c.isLetter() && c.isUpperCase() }
