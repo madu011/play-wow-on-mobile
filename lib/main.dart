@@ -434,6 +434,18 @@ class _LauncherPageState extends State<LauncherPage> {
       showInfo('Could not update realmlist', 'Details: $error');
     }
   }
+  Future<void> _openNativeScreen(String method, String title, String description) async {
+    try {
+      await _storageChannel.invokeMethod<bool>(method);
+    } on PlatformException catch (error) {
+      if (mounted) showInfo(title, error.message ?? error.code);
+    } on MissingPluginException {
+      if (mounted) showInfo(title, 'This screen is available in the integrated WOW LK Android build.');
+    } catch (error) {
+      if (mounted) showInfo(title, 'Could not open this screen: $error');
+    }
+  }
+
   void _jumpToSection(int index, GlobalKey key) {
     setState(() => selectedNavTab = index);
     final target = key.currentContext;
@@ -731,7 +743,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     value: graphicsPreset,
                     decoration: const InputDecoration(
                       labelText: 'Graphics preset',
-                      helperText: 'Starting recommendation only; not applied to WoW yet',
+                      helperText: 'Use the native game and container settings below to apply runtime values',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
@@ -768,7 +780,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Values are suggested starting points. They will not affect the game until a compatible runtime is integrated.',
+                    'These are launcher recommendations. Apply actual game and graphics values in the native settings below.',
                     style: TextStyle(color: muted, fontSize: 10),
                   ),
                   const Divider(color: Color(0xFF293448)),
@@ -839,6 +851,46 @@ class _LauncherPageState extends State<LauncherPage> {
                       },
                       icon: const Icon(Icons.restart_alt, size: 18),
                       label: const Text('Restore recommended settings'),
+                    ),
+                  ),
+                  const Divider(color: Color(0xFF293448)),
+                  const Text('NATIVE RUNTIME SETTINGS',
+                      style: TextStyle(color: gold, fontSize: 11,
+                          fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Open the built-in Winlator and WoW configuration screens inside this same WOW LK app.',
+                    style: TextStyle(color: muted, fontSize: 11),
+                  ),
+                  const SizedBox(height: 10),
+                  _nativeSettingsTile(
+                    icon: Icons.sports_esports,
+                    title: 'WoW Game Settings',
+                    subtitle: 'Realm, game resolution and view distance',
+                    onTap: () => _openNativeScreen(
+                      'openNativeWowSettings',
+                      'WoW settings unavailable',
+                      'Select and import a valid WoW 3.3.5a game folder first.',
+                    ),
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.tune,
+                    title: 'Winlator Container Settings',
+                    subtitle: 'Graphics driver, DX wrapper, Box64, Wine and audio',
+                    onTap: () => _openNativeScreen(
+                      'openNativeContainerSettings',
+                      'Container settings unavailable',
+                      'Create the WoW runtime container by launching the game once, then open these settings.',
+                    ),
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.gamepad,
+                    title: 'Touch Controls Editor',
+                    subtitle: 'Move, resize and configure on-screen buttons',
+                    onTap: () => _openNativeScreen(
+                      'openNativeControlsEditor',
+                      'Touch controls unavailable',
+                      'The built-in controls editor could not be opened.',
                     ),
                   ),
                 ],
@@ -915,6 +967,43 @@ class _LauncherPageState extends State<LauncherPage> {
     return 'WOW LK — DEVICE & GRAPHICS REPORT\\n'
         '${rows.entries.map((entry) => '${entry.key}: ${entry.value}').join('\\n')}'
         '\\n\\nNote: estimates are heuristic only. No WoW runtime benchmark has been performed.';
+  }
+
+  Widget _nativeSettingsTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 7),
+      child: Material(
+        color: const Color(0xFF151F2E),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            child: Row(children: [
+              Icon(icon, color: gold, size: 22),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: const TextStyle(
+                    color: muted, fontSize: 10)),
+                ],
+              )),
+              const Icon(Icons.chevron_right, color: muted),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _deviceInfoPanel() {
