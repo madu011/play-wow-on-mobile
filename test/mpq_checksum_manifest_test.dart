@@ -6,6 +6,9 @@ void main() {
   test('encodes and decodes a manifest', () {
     final report = MpqFingerprintReport(
       scannedAt: DateTime.utc(2026, 11, 16),
+      duration: Duration.zero,
+      discoveredFileCount: 1,
+      cancelled: false,
       files: const [
         MpqFingerprint(
           relativePath: 'common.MPQ',
@@ -36,6 +39,9 @@ void main() {
     );
     final current = MpqFingerprintReport(
       scannedAt: DateTime.utc(2026, 11, 17),
+      duration: Duration.zero,
+      discoveredFileCount: 3,
+      cancelled: false,
       files: const [
         MpqFingerprint(
           relativePath: 'same.MPQ', sizeBytes: 1, sha256: hashA),
