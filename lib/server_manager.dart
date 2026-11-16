@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,6 +99,8 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
   String? _selectedProfileKey;
   bool _loading = true;
   String? _inputError;
+  final Set<String> _testingKeys = {};
+  final Map<String, String> _connectionResults = {};
 
   @override
   void initState() {
@@ -189,6 +192,28 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
     widget.onServerSelected(profile);
   }
 
+  Future<void> _testConnection(ServerProfile profile) async {
+    setState(() {
+      _testingKeys.add(profile.key);
+      _connectionResults.remove(profile.key);
+    });
+    Socket? socket;
+    try {
+      socket = await Socket.connect(
+        profile.host,
+        profile.port,
+        timeout: const Duration(seconds: 5),
+      );
+      if (!mounted) return;
+      setState(() => _connectionResults[profile.key] = 'TCP connection successful');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _connectionResults[profile.key] = 'Could not reach this address and port');
+    } finally {
+      socket?.destroy();
+      if (mounted) setState(() => _testingKeys.remove(profile.key));
+    }
+  }
   Future<void> _deleteProfile(ServerProfile profile) async {
     setState(() {
       _profiles = _profiles
@@ -309,16 +334,49 @@ class _ServerManagerCardState extends State<ServerManagerCard> {
                   ),
                   title: Text(profile.name,
                       style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    profile.realmlistLine,
-                    style: const TextStyle(color: _serverMuted, fontSize: 10),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(profile.realmlistLine,
+                          style: const TextStyle(color: _serverMuted, fontSize: 10)),
+                      if (_connectionResults.containsKey(profile.key))
+                        Text(
+                          _connectionResults[profile.key]!,
+                          style: TextStyle(
+                            color: _connectionResults[profile.key] == 'TCP connection successful'
+                                ? Colors.greenAccent
+                                : Colors.orangeAccent,
+                            fontSize: 10,
+                          ),
+                        ),
+                    ],
                   ),
                   onTap: () => _selectProfile(profile),
-                  trailing: IconButton(
-                    tooltip: 'Remove server',
-                    icon: const Icon(Icons.delete_outline,
-                        color: _serverMuted, size: 20),
-                    onPressed: () => _deleteProfile(profile),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Test server connection',
+                        onPressed: _testingKeys.contains(profile.key)
+                            ? null
+                            : () => _testConnection(profile),
+                        icon: _testingKeys.contains(profile.key)
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.wifi_tethering,
+                                color: _serverGold, size: 20),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove server',
+                        icon: const Icon(Icons.delete_outline,
+                            color: _serverMuted, size: 20),
+                        onPressed: () => _deleteProfile(profile),
+                      ),
+                    ],
                   ),
                 ),
               );
