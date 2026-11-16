@@ -2,6 +2,7 @@
 """Apply WOW LK branding and the exact user-supplied Icecrown dragon icon."""
 from pathlib import Path
 import shutil
+from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
 ENGINE=ROOT/"vendor"/"wow-mobile-engine"
 RES=ENGINE/"app/src/main/res"
@@ -27,19 +28,31 @@ for old,new in {
 '<item name="colorSecondaryVariant">#37424f</item>':'<item name="colorSecondaryVariant">#30445F</item>'
 }.items(): replace_once(STYLES,old,new)
 if not PATCH.is_file(): raise SystemExit(f"Missing supplied app icon: {PATCH}")
-for density in ("mdpi","hdpi","xhdpi","xxhdpi","xxxhdpi"):
-    target=RES/f"mipmap-{density}"/"ic_launcher.webp"
-    target.parent.mkdir(parents=True,exist_ok=True)
-    legacy=target.with_suffix(".png")
-    if legacy.exists(): legacy.unlink()
-    shutil.copyfile(PATCH,target)
-drawable=RES/"drawable"
-drawable.mkdir(parents=True,exist_ok=True)
-# Keep the adaptive icon foreground independent from ic_launcher itself.
-# Referencing @mipmap/ic_launcher here creates a recursive adaptive-icon resource.
+# Render opaque legacy launcher PNGs and a padded adaptive foreground.
+# Compositing onto the brand background prevents transparent checkerboard artifacts.
+background = (6, 18, 38, 255)
+with Image.open(PATCH).convert("RGBA") as source:
+    for density, size in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
+        target=RES/f"mipmap-{density}"/"ic_launcher.png"
+        target.parent.mkdir(parents=True,exist_ok=True)
+        canvas=Image.new("RGBA",(size,size),background)
+        art=source.copy()
+        art.thumbnail((int(size*0.82),int(size*0.82)),Image.Resampling.LANCZOS)
+        canvas.alpha_composite(art,((size-art.width)//2,(size-art.height)//2))
+        canvas.convert("RGB").save(target,optimize=True)
+        legacy=target.with_suffix(".webp")
+        if legacy.exists(): legacy.unlink()
+
+# Adaptive foreground keeps the artwork inside Android's safe zone.
 nodpi=RES/"drawable-nodpi"
 nodpi.mkdir(parents=True,exist_ok=True)
-shutil.copyfile(PATCH,nodpi/"wowlk_dragon_foreground.webp")
+fg=Image.new("RGBA",(432,432),(0,0,0,0))
+art=source.copy()
+art.thumbnail((300,300),Image.Resampling.LANCZOS)
+fg.alpha_composite(art,((432-art.width)//2,(432-art.height)//2))
+fg.save(nodpi/"wowlk_dragon_foreground.png",optimize=True)
+drawable=RES/"drawable"
+drawable.mkdir(parents=True,exist_ok=True)
 (drawable/"ic_wowlk_supplied_foreground.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/wowlk_dragon_foreground"
