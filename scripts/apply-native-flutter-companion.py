@@ -42,6 +42,13 @@ replace_once(app_gradle, "dependencies {\n",
              "dependencies {\n    implementation '" + aar_dependency + "'\n")
 
 manifest = NATIVE / "app" / "src" / "main" / "AndroidManifest.xml"
+manifest_text = manifest.read_text(encoding="utf-8")
+manage_permission = '<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />'
+if manage_permission not in manifest_text:
+    anchor = '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>'
+    if anchor not in manifest_text:
+        raise SystemExit("Cannot add All files access permission: manifest anchor missing")
+    manifest.write_text(manifest_text.replace(anchor, anchor + "\\n    " + manage_permission, 1), encoding="utf-8")
 replace_once(
     manifest,
     '''        <activity android:name="com.winlator.wowmobile.WowMobileActivity"
