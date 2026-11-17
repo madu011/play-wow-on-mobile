@@ -118,47 +118,47 @@ text = text[:start] + replacement + "\n}\n"
 # The WOW LK Flutter activity remains the only visible app home screen.
 text = text.replace(
     "        setContentView(R.layout.wow_main_activity);",
-    '        autoPlayRequested = getIntent().getBooleanExtra("wow.lk.AUTO_PLAY", false);\\n'
-    '        setContentView(R.layout.wow_main_activity);\\n'
+    '        autoPlayRequested = getIntent().getBooleanExtra("wow.lk.AUTO_PLAY", false);\n'
+    '        setContentView(R.layout.wow_main_activity);\n'
     '        if (autoPlayRequested) getWindow().getDecorView().setVisibility(View.INVISIBLE);'
 )
 # Modern Android requires the special all-files access permission for the native
 # Winlator process to read an arbitrary existing game folder through File paths.
 text = text.replace(
-    "        autoPlayRequested = getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false);\\n"
-    "        if (!requestAppPermissions()) {\\n"
-    "            RootFSInstaller.installIfNeeded(this);\\n"
-    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
+    "        autoPlayRequested = getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false);\n"
+    "        if (!requestAppPermissions()) {\n"
+    "            RootFSInstaller.installIfNeeded(this);\n"
+    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
     "        }",
-    "        if (Build.VERSION.SDK_INT >= 30) {\\n"
-    "            if (autoPlayRequested && !Environment.isExternalStorageManager()) {\\n"
-    "                Intent access = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse(\"package:\" + getPackageName()));\\n"
-    "                startActivity(access);\\n"
-    "            } else {\\n"
-    "                RootFSInstaller.installIfNeeded(this);\\n"
-    "                if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
-    "            }\\n"
-    "        } else if (!requestAppPermissions()) {\\n"
-    "            RootFSInstaller.installIfNeeded(this);\\n"
-    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\\n"
+    "        if (Build.VERSION.SDK_INT >= 30) {\n"
+    "            if (autoPlayRequested && !Environment.isExternalStorageManager()) {\n"
+    "                Intent access = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse(\"package:\" + getPackageName()));\n"
+    "                startActivity(access);\n"
+    "            } else {\n"
+    "                RootFSInstaller.installIfNeeded(this);\n"
+    "                if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
+    "            }\n"
+    "        } else if (!requestAppPermissions()) {\n"
+    "            RootFSInstaller.installIfNeeded(this);\n"
+    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
     "        }"
 )
 # On return from Android's special permission screen, continue the pending launch.
 text = text.replace(
-    "    protected void onResume() {\\n        super.onResume();",
-    "    protected void onResume() {\\n        super.onResume();\\n"
-    "        if (autoPlayRequested && Build.VERSION.SDK_INT >= 30) {\\n"
-    "            if (Environment.isExternalStorageManager()) waitForRootFsAndLaunch(600);\\n"
-    "            else if (getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false)) {\\n"
-    "                Toast.makeText(this, \"Allow All files access to start WoW from the selected folder.\", Toast.LENGTH_LONG).show();\\n"
-    "                autoPlayRequested = false; finish(); return;\\n"
-    "            }\\n"
+    "    protected void onResume() {\n        super.onResume();",
+    "    protected void onResume() {\n        super.onResume();\n"
+    "        if (autoPlayRequested && Build.VERSION.SDK_INT >= 30) {\n"
+    "            if (Environment.isExternalStorageManager()) waitForRootFsAndLaunch(600);\n"
+    "            else if (getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false)) {\n"
+    "                Toast.makeText(this, \"Allow All files access to start WoW from the selected folder.\", Toast.LENGTH_LONG).show();\n"
+    "                autoPlayRequested = false; finish(); return;\n"
+    "            }\n"
     "        }"
 )
 # Do not leave the hidden native home activity underneath the game.
 text = text.replace(
     "                    startActivity(helper.createLaunchIntent(container, shortcutFile));",
-    "                    startActivity(helper.createLaunchIntent(container, shortcutFile));\\n"
+    "                    startActivity(helper.createLaunchIntent(container, shortcutFile));\n"
     "                    if (autoPlayRequested) finish();"
 )
 
