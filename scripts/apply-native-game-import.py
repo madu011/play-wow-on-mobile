@@ -16,6 +16,8 @@ if "WowGameFolderImporter.importTree" in text:
 for import_line in [
     "import android.app.ProgressDialog;\n",
     "import android.net.Uri;\n",
+    "import android.provider.Settings;\n",
+    "import android.os.Build;\n",
     "import android.widget.Toast;\n",
     "import java.util.concurrent.atomic.AtomicBoolean;\n",
 ]:
@@ -117,12 +119,8 @@ text = text[:start] + replacement + "\n}\n"
 text = text.replace(
     "        setContentView(R.layout.wow_main_activity);",
     '        autoPlayRequested = getIntent().getBooleanExtra("wow.lk.AUTO_PLAY", false);\\n'
-    '        if (autoPlayRequested) {\\n'
-    '            getWindow().getDecorView().setVisibility(View.INVISIBLE);\\n'
-    '            setContentView(new android.widget.FrameLayout(this));\\n'
-    '        } else {\\n'
-    '            setContentView(R.layout.wow_main_activity);\\n'
-    '        }'
+    '        setContentView(R.layout.wow_main_activity);\\n'
+    '        if (autoPlayRequested) getWindow().getDecorView().setVisibility(View.INVISIBLE);'
 )
 # Modern Android requires the special all-files access permission for the native
 # Winlator process to read an arbitrary existing game folder through File paths.
