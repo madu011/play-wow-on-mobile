@@ -25,7 +25,7 @@ ICON_DIR.mkdir(parents=True, exist_ok=True)
 ICON_SOURCE = ICON_DIR / "wow-lk-user-supplied.png"
 with urlopen(ICON_URL, timeout=60) as response:
     payload = response.read()
-if not payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
     raise SystemExit("The repository's supplied icon did not download as a valid PNG.")
 ICON_SOURCE.write_bytes(payload)
 ASSET_DIR = MODULE / "assets"
