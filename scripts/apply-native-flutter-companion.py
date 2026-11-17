@@ -120,7 +120,7 @@ import io.flutter.plugin.common.MethodChannel;
 /** Hosts the Flutter companion and bridges its game-folder and realm settings to Winlator. */
 public class WowLKCompanionActivity extends FlutterActivity {
     private static final String CHANNEL = "wow.lk/storage";
-    private static final int REQUEST_GAME_TREE = 4019;
+    private static final int REQUEST_GAME_TREE = 4019;\n    private static final int REQUEST_ALL_FILES_ACCESS = 4021;
     private MethodChannel.Result pendingFolderResult;
     private AtomicBoolean importCancelled;
     private MethodChannel storageChannel;
@@ -162,8 +162,10 @@ public class WowLKCompanionActivity extends FlutterActivity {
                         break;
                     }
                     pendingFolderResult = result;
-                    if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 4020);
+                    if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager()) {
+                        Intent access = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+                        startActivityForResult(access, REQUEST_ALL_FILES_ACCESS);
                     } else {
                         launchGameTreePicker();
                     }
@@ -209,6 +211,16 @@ public class WowLKCompanionActivity extends FlutterActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_ALL_FILES_ACCESS) {
+            if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+                launchGameTreePicker();
+            } else if (pendingFolderResult != null) {
+                MethodChannel.Result callback = pendingFolderResult;
+                pendingFolderResult = null;
+                callback.error("ALL_FILES_ACCESS", "Allow WOW LK to manage files so the game engine can read the selected original folder without copying it.", null);
+            }
+            return;
+        }
         if (requestCode != REQUEST_GAME_TREE || pendingFolderResult == null) return;
         final MethodChannel.Result callback = pendingFolderResult;
         pendingFolderResult = null;
