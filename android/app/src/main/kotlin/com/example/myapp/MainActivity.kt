@@ -40,7 +40,16 @@ class MainActivity : FlutterActivity() {
         if (uri == null) { result?.success(null); return }
         try {
             val flags = (data?.flags ?: 0) and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            if (flags and Intent.FLAG_GRANT_READ_URI_PERMISSION == 0 ||
+                flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION == 0) {
+                throw SecurityException("Android did not grant both read and write access. In the folder picker, select the main WoW folder and tap Use this folder, then confirm Allow.")
+            }
             contentResolver.takePersistableUriPermission(uri, flags)
+            // Confirm that the persisted permission is really available before saving it.
+            val persisted = contentResolver.persistedUriPermissions.any {
+                it.uri == uri && it.isReadPermission && it.isWritePermission
+            }
+            if (!persisted) throw SecurityException("Android could not keep read/write permission for this folder. Please select the folder again.")
             getSharedPreferences(prefsName, MODE_PRIVATE).edit().putString("game_tree_uri", uri.toString()).apply()
             result?.success(uri.toString())
         } catch (e: Exception) { result?.error("TREE_PERMISSION", e.message, null) }
@@ -198,9 +207,20 @@ class MainActivity : FlutterActivity() {
     private fun scanTree(tree: Uri): Map<String, Any> {
         val rootId = DocumentsContract.getTreeDocumentId(tree)
         val rootUri = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
+        // Verify persisted SAF permission on every scan; stale URI strings must not look like access.
+        val hasRead = contentResolver.persistedUriPermissions.any {
+            it.uri == tree && it.isReadPermission
+        }
+        if (!hasRead) throw SecurityException("Saved folder permission has expired. Tap GRANT READ / WRITE ACCESS and select the WoW folder again.")
         val rootEntries = children(rootUri)
         val exe = rootEntries.any { it.name.equals("wow.exe", true) || it.name.equals("wow-64.exe", true) }
-        val data = rootEntries.firstOrNull { it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR }
+        val detectedFiles = rootEntries.map { it.name }.toMutableList()
+        // Some OEM document providers return an empty or generic MIME type for directories.
+        val data = rootEntries.firstOrNull {
+            it.name.equals("Data", true) &&
+                (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank() ||
+                 it.mime == "application/octet-stream")
+        }
         val locales = mutableSetOf<String>()
         val realmlists = mutableListOf<String>()
         val mpqs = mutableListOf<String>()
@@ -211,9 +231,18 @@ class MainActivity : FlutterActivity() {
                 if (depth > 12) return
                 for (entry in children(parent)) {
                     val relative = if (prefix.isEmpty()) entry.name else "$prefix/${entry.name}"
-                    if (entry.mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        if (prefix.isEmpty() && entry.name.length == 4 && entry.name.substring(0,2).all { it.isLetter() && it.isLowerCase() } &&
-                            entry.name.substring(2).all { it.isLetter() } && entry.name.substring(2).all { it.isUpperCase() }) {
+                    val looksLikeLocale = prefix.isEmpty() && entry.name.length == 4 &&
+                        entry.name.substring(0, 2).all { it.isLetter() && it.isLowerCase() } &&
+                        entry.name.substring(2).all { it.isLetter() && it.isUpperCase() }
+                    val isDirectory = entry.mime == DocumentsContract.Document.MIME_TYPE_DIR ||
+                        entry.mime.isBlank() || entry.mime == "application/octet-stream" || looksLikeLocale
+                    if (isDirectory) {
+                        if (looksLikeLocale) {
+                            // Keep the locale directory visible even when a document provider
+                            // reports an unknown archive size; file presence is the key check.
+                            // Android document providers can return a null or generic MIME type
+                            // for MPQ files. Detect the locale from the standard folder name;
+                            // verify locale.MPQ separately as a presence check, never as access permission.
                             locales.add(entry.name)
                         }
                         walk(entry.uri, relative, depth + 1)
@@ -224,6 +253,7 @@ class MainActivity : FlutterActivity() {
                         }
                         if (entry.name.endsWith(".mpq", true)) {
                             mpqs.add(relative)
+                            detectedFiles.add("Data/$relative")
                             totalBytes += entry.size
                             if (entry.size == 0L) empty.add(relative)
                         }
@@ -245,7 +275,8 @@ class MainActivity : FlutterActivity() {
             "missingCoreArchives" to core.filter { !found.contains(it) },
             "totalArchiveBytes" to totalBytes,
             "notes" to if (data == null) listOf("Data folder not found or cannot be read through Android folder access.") else emptyList<String>(),
-            "mpqPaths" to mpqs
+            "mpqPaths" to mpqs,
+            "detectedFiles" to detectedFiles.distinct().sorted()
         )
     }
 
@@ -253,10 +284,12 @@ class MainActivity : FlutterActivity() {
         val rootId = DocumentsContract.getTreeDocumentId(tree)
         val rootUri = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
         val data = children(rootUri).firstOrNull {
-            it.name.equals("Data", true) && it.mime == DocumentsContract.Document.MIME_TYPE_DIR
+            it.name.equals("Data", true) &&
+                (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank() ||
+                 it.mime == "application/octet-stream")
         } ?: return false
         val localeFolders = children(data.uri).filter {
-            it.mime == DocumentsContract.Document.MIME_TYPE_DIR &&
+            (it.mime == DocumentsContract.Document.MIME_TYPE_DIR || it.mime.isBlank()) &&
                 it.name.length == 4 &&
                 it.name.substring(0, 2).all { c -> c.isLetter() && c.isLowerCase() } &&
                 it.name.substring(2).all { c -> c.isLetter() && c.isUpperCase() }

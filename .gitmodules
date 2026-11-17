@@ -1,0 +1,3 @@
+[submodule "vendor/wow-mobile-engine"]
+	path = vendor/wow-mobile-engine
+	url = https://github.com/marcocastignoli/wow-mobile.git
