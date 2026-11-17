@@ -16,6 +16,8 @@ if "WowGameFolderImporter.importTree" in text:
 for import_line in [
     "import android.app.ProgressDialog;\n",
     "import android.net.Uri;\n",
+    "import android.provider.Settings;\\n",
+    "import android.os.Build;\\n",
     "import android.provider.Settings;\n",
     "import android.os.Build;\n",
     "import android.widget.Toast;\n",
