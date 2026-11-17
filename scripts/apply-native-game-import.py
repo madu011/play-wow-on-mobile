@@ -39,7 +39,7 @@ text = text.replace(
 )
 text = text.replace(
     "    private AtomicBoolean importCancelled;",
-    "    private AtomicBoolean importCancelled;\n    private boolean autoPlayRequested;"
+    "    private AtomicBoolean importCancelled;\n    private boolean autoPlayRequested;\n    private boolean autoPlayLaunchStarted;\n    private boolean launchedFromCompanion;"
 )
 text = text.replace(
     "        if (!requestAppPermissions()) RootFSInstaller.installIfNeeded(this);",
