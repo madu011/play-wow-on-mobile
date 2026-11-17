@@ -18,6 +18,7 @@ for import_line in [
     "import android.net.Uri;\n",
     "import android.provider.Settings;\n",
     "import android.os.Build;\n",
+    "import android.os.Environment;\n",
     "import android.widget.Toast;\n",
     "import java.util.concurrent.atomic.AtomicBoolean;\n",
 ]:
@@ -43,9 +44,10 @@ text = text.replace(
 text = text.replace(
     "        if (!requestAppPermissions()) RootFSInstaller.installIfNeeded(this);",
     '        autoPlayRequested = getIntent().getBooleanExtra("wow.lk.AUTO_PLAY", false);\n'
+    '        launchedFromCompanion = autoPlayRequested;\n'
     '        if (!requestAppPermissions()) {\n'
     '            RootFSInstaller.installIfNeeded(this);\n'
-    '            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n'
+    '            if (autoPlayRequested) startAutoPlayWhenReady();\n'
     '        }'
 )
 text = text.replace(
@@ -54,6 +56,12 @@ text = text.replace(
     '            }\n            else finish();'
 )
 method = """
+    private void startAutoPlayWhenReady() {
+        if (autoPlayLaunchStarted || !autoPlayRequested) return;
+        autoPlayLaunchStarted = true;
+        waitForRootFsAndLaunch(600);
+    }
+
     private void waitForRootFsAndLaunch(int attemptsLeft) {
         if (!autoPlayRequested || isFinishing()) return;
         com.winlator.xenvironment.RootFS rootFS = com.winlator.xenvironment.RootFS.find(this);
@@ -148,7 +156,7 @@ text = text.replace(
     "    protected void onResume() {\n        super.onResume();",
     "    protected void onResume() {\n        super.onResume();\n"
     "        if (autoPlayRequested && Build.VERSION.SDK_INT >= 30) {\n"
-    "            if (Environment.isExternalStorageManager()) waitForRootFsAndLaunch(600);\n"
+    "            if (Environment.isExternalStorageManager()) startAutoPlayWhenReady();\n"
     "            else if (getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false)) {\n"
     "                Toast.makeText(this, \"Allow All files access to start WoW from the selected folder.\", Toast.LENGTH_LONG).show();\n"
     "                autoPlayRequested = false; finish(); return;\n"
@@ -159,7 +167,7 @@ text = text.replace(
 text = text.replace(
     "                    startActivity(helper.createLaunchIntent(container, shortcutFile));",
     "                    startActivity(helper.createLaunchIntent(container, shortcutFile));\n"
-    "                    if (autoPlayRequested) finish();"
+    "                    if (launchedFromCompanion) finish();"
 )
 
 IMPORTER_TARGET.parent.mkdir(parents=True, exist_ok=True)
