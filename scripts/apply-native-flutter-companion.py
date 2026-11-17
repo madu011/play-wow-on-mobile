@@ -307,7 +307,25 @@ public class WowLKCompanionActivity extends FlutterActivity {
         ArrayList<String> emptyArchives = new ArrayList<>();
         ArrayList<String> missingCore = new ArrayList<>();
         String rootId = DocumentsContract.getTreeDocumentId(tree);
-        ArrayList<Map<String, Object>> rootItems = listDocumentChildren(tree, rootId);
+        ArrayList<Map<String, Object>> rootItems;
+        try {
+            rootItems = listDocumentChildren(tree, rootId);
+        } catch (Exception providerError) {
+            if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+                return scanGameTreeDirect(WowGameFolderImporter.resolveAndValidateTree(this, tree));
+            }
+            throw providerError;
+        }
+        boolean hasRootExe = false;
+        boolean hasRootData = false;
+        for (Map<String, Object> entry : rootItems) {
+            String entryName = (String) entry.get("name");
+            if (entryName.equalsIgnoreCase("Wow.exe") || entryName.equalsIgnoreCase("Wow-64.exe")) hasRootExe = true;
+            if (entryName.equalsIgnoreCase("Data") && Boolean.TRUE.equals(entry.get("directory"))) hasRootData = true;
+        }
+        if ((!hasRootExe || !hasRootData) && Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+            return scanGameTreeDirect(WowGameFolderImporter.resolveAndValidateTree(this, tree));
+        }
         boolean executable = false;
         boolean wtf = false;
         Uri dataFolder = null;
@@ -388,6 +406,74 @@ public class WowLKCompanionActivity extends FlutterActivity {
         if (realmlists.isEmpty()) notes.add("No realmlist.wtf was found under a locale folder.");
         if (archiveCount == 0) notes.add("No MPQ archives were listed under Data/.");
         response.put("notes", notes);
+        return response;
+    }
+
+    private Map<String, Object> scanGameTreeDirect(File root) {
+        if (root == null || !root.isDirectory()) throw new IllegalStateException("The selected WoW folder is not readable as a normal Android folder path.");
+        File[] rootEntries = root.listFiles();
+        if (rootEntries == null) throw new SecurityException("Android still blocks direct access to this folder. Enable All files access for WOW LK and select the folder again.");
+        Map<String, Object> response = new HashMap<>();
+        ArrayList<String> detected = new ArrayList<>();
+        ArrayList<String> locales = new ArrayList<>();
+        ArrayList<String> realmlists = new ArrayList<>();
+        ArrayList<String> emptyArchives = new ArrayList<>();
+        ArrayList<String> missingCore = new ArrayList<>();
+        boolean executable = false, wtf = false;
+        File data = new File(root, "Data");
+        for (File item : rootEntries) {
+            String name = item.getName();
+            if (item.isFile() && (name.equalsIgnoreCase("Wow.exe") || name.equalsIgnoreCase("Wow-64.exe"))) {
+                executable = true; detected.add(name);
+            }
+            if (item.isDirectory() && name.equalsIgnoreCase("WTF")) { wtf = true; detected.add("WTF/"); }
+            if (item.isDirectory() && name.equalsIgnoreCase("Data")) detected.add("Data/");
+        }
+        if (!executable || !data.isDirectory()) throw new IllegalStateException("The selected folder is accessible, but it does not directly contain Wow.exe and Data/. Select the main WoW folder.");
+        int archiveCount = 0; long totalBytes = 0;
+        java.util.HashSet<String> coreFound = new java.util.HashSet<>();
+        java.util.ArrayDeque<File> pending = new java.util.ArrayDeque<>();
+        java.util.ArrayDeque<Integer> depths = new java.util.ArrayDeque<>();
+        pending.add(data); depths.add(0);
+        while (!pending.isEmpty()) {
+            File parent = pending.removeFirst(); int depth = depths.removeFirst();
+            File[] children = parent.listFiles();
+            if (children == null) throw new SecurityException("Cannot read game folder: " + parent.getAbsolutePath());
+            for (File item : children) {
+                String name = item.getName();
+                String relative = root.toPath().relativize(item.toPath()).toString().replace(File.separatorChar, '/');
+                if (item.isDirectory()) {
+                    if (parent.equals(data) && name.matches("[A-Za-z]{2}[A-Za-z]{2}")) {
+                        locales.add(name); detected.add(relative + "/");
+                    }
+                    if (depth < 2) { pending.addLast(item); depths.addLast(depth + 1); }
+                } else {
+                    detected.add(relative);
+                    if (name.equalsIgnoreCase("realmlist.wtf")) realmlists.add(relative);
+                    if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".mpq")) {
+                        archiveCount++; totalBytes += item.length();
+                        if (item.length() == 0) emptyArchives.add(relative);
+                        String lower = name.toLowerCase(java.util.Locale.ROOT);
+                        if (lower.equals("common.mpq") || lower.equals("common-2.mpq") ||
+                            lower.equals("expansion.mpq") || lower.equals("lichking.mpq")) coreFound.add(lower);
+                    }
+                }
+            }
+        }
+        for (String core : new String[]{"common.mpq","common-2.mpq","expansion.mpq","lichking.mpq"}) if (!coreFound.contains(core)) missingCore.add(core);
+        java.util.Collections.sort(locales); java.util.Collections.sort(realmlists); java.util.Collections.sort(detected);
+        response.put("folderExists", true); response.put("executableFound", true); response.put("dataFolderFound", true);
+        response.put("wtfFolderFound", wtf); response.put("localeFolders", locales); response.put("realmlistFiles", realmlists);
+        response.put("archiveCount", archiveCount); response.put("totalArchiveBytes", totalBytes);
+        response.put("emptyArchiveFiles", emptyArchives); response.put("missingCoreArchives", missingCore);
+        response.put("detectedFiles", detected);
+        ArrayList<String> notes = new ArrayList<>();
+        if (!wtf) notes.add("WTF/ folder was not found in the selected root folder.");
+        if (locales.isEmpty()) notes.add("No locale folder such as enUS or enGB was found under Data/.");
+        if (realmlists.isEmpty()) notes.add("No realmlist.wtf was found under a locale folder.");
+        if (archiveCount == 0) notes.add("No MPQ archives were listed under Data/.");
+        response.put("notes", notes);
+        response.put("scanMethod", "direct-file-access");
         return response;
     }
 
