@@ -2,7 +2,7 @@
 
 **An Android companion launcher and game-folder toolkit for World of Warcraft: Wrath of the Lich King (3.3.5a).**
 
-Play WoW on Mobile is a community-oriented Flutter project. It helps players organize a locally stored WoW client, inspect selected game files, save realm connection profiles, and compare MPQ file fingerprints. It is a launcher/helper prototype — **it does not currently bundle the Windows WoW game client or a compatibility runtime, and it does not yet prove that the game can be played directly on Android.**
+Play WoW on Mobile is an experimental Android application for managing and launching a user-supplied WoW 3.3.5a client. On the `runtime/native-engine-import` branch, the Flutter companion is embedded in the native Winlator-based Android host, which includes the Wine/Box64 runtime stack. The project builds a native runtime APK, but successful CI compilation is not proof that WoW launches or plays correctly on every phone. Real-device validation is still required.
 
 > **Status:** Experimental / in development. Builds and automated tests are useful checks, but real-device storage, realm, and game-runtime compatibility still require testing on supported Android devices.
 
@@ -43,7 +43,7 @@ The project aims to make managing a WotLK 3.3.5a client on Android easier, espec
 | MPQ SHA-256 scanner | On filesystem-accessible folders, streams MPQ files and calculates SHA-256 fingerprints |
 | Checksum baseline library | Saves named, user-created local snapshots and compares later fingerprints; JSON import/export is supported in the filesystem scanner flow |
 | MPQ scan history | Keeps recent scan summaries and limited detailed fingerprint history locally, with scan-to-scan comparison |
-| Graphics configuration | Saves Auto, Low, Low–Medium, Medium, and High starting presets; recommendations are based on detected device information and are not applied to the Windows game runtime |\n| Device diagnostics | Shows detected hardware and graphics details, allows a device rescan, and copies a diagnostic report to the clipboard |\n| Touch controls preference | Saves the touch-control overlay preference in local app settings |
+| Graphics configuration | Provides hardware-based starting recommendations and links to native Winlator container settings; recommendations are not performance benchmarks and must be validated on the target device |\n| Device diagnostics | Shows detected hardware and graphics details, allows a device rescan, and copies a diagnostic report to the clipboard |\n| Touch controls preference | Saves the touch-control overlay preference in local app settings |
 
 Features depend on Android version, device, and the storage provider used to select the folder. See [Android storage access](#android-storage-access) and [What it does not do yet](#what-it-does-not-do-yet).
 
@@ -52,8 +52,8 @@ Features depend on Android version, device, and the storage provider used to sel
 Please read this before installing or reporting a bug:
 
 - It does not include Blizzard's WoW client files.
-- It does not currently include Wine, Box64, Winlator, or another Windows compatibility layer.
-- It does not currently demonstrate that `Wow.exe` can be launched and played on Android.
+- The integrated development build includes the native Winlator/Wine/Box64 runtime stack; runtime behavior still depends on device and GPU compatibility.
+- Successful installation or opening the launcher does not prove that `Wow.exe` can launch, connect to a realm, or sustain gameplay on a particular Android device.
 - It does not patch, repair, download, or authenticate a WoW installation.
 - It does not guarantee that a saved realm supports the exact 3.3.5a client.
 - A successful DNS or TCP check does not mean WoW authentication or gameplay will work.
@@ -163,7 +163,7 @@ A TCP connection is not the same as a successful WoW login. Authentication, real
 
 ### OPTIONS — local preferences
 
-The current launcher includes saved graphics presets (Auto, Low, Low–Medium, Medium, and High), automatic device-based starting recommendations, a touch-control preference, and a device diagnostics report that can be copied to the clipboard. These are launcher-side preferences and recommendations only; they are not applied to the Windows game and do not install a graphics driver or make the Windows client run on Android.
+The integrated launcher includes device diagnostics, a hardware-aware starting profile, and links to the native Winlator container editor and WoW settings. The Auto Tuner writes a conservative starting configuration to the native container; it is not a benchmark or a guarantee of compatibility. Manual driver, DX wrapper, Box64, Wine, audio, resolution, and environment settings remain available in the native editor.
 
 ## 📂 Android storage access
 
@@ -248,7 +248,7 @@ Items below are plans, not claims that the feature is already complete.
 - [ ] Improve provider-specific storage error reporting and recovery.
 - [ ] Expand device testing across Android versions and OEM file providers.
 - [ ] Finish the Classic WoW-inspired visual treatment across every screen and dialog.
-- [ ] Define and test a real Android game-runtime integration, if technically and legally feasible.
+- [ ] Validate WoW launch, login, realm selection, touch controls, keyboard/mouse input, and sustained gameplay on supported physical devices.
 - [ ] Verify launch, login, realm selection, and gameplay separately on supported hardware before claiming mobile play support.
 
 ## 🤝 Contributing
@@ -280,4 +280,4 @@ No open-source license has been selected in this repository yet. Until a license
 
 The runtime/native-engine-import development branch now builds toward a single WOW LK Android package: the Flutter companion is embedded into the native WoW Mobile host application as an in-app Flutter screen. The Flutter companion is the launcher screen, and its OPEN GAME ENGINE action opens the native Winlator/Wine runtime launcher within the same app.
 
-The current integration phase does not yet synchronize every Flutter companion feature with the native engine. In particular, the Flutter SAF-selected game folder and saved Realm Manager profiles are not yet automatically transferred into the native runtime's storage/configuration. Treat the integrated APK as an experimental development build until those bridges and real-device gameplay checks are complete.
+The Flutter companion and native runtime are built into one Android package. The selected game folder is linked through Android's Storage Access Framework and validated before its filesystem path is mapped into the native WoW container; realm settings are written to the selected client folder. The folder link supports directly accessible internal/shared storage and SD-card volumes, not cloud-only document providers. Treat the APK as experimental until real-device storage access, game launch, realm connection, and gameplay are verified.
