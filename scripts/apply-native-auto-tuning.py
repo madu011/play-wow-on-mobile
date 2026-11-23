@@ -12,7 +12,6 @@ tuner = r'''package com.winlator.wowmobile;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.opengl.EGL14;
 import android.opengl.EGLConfig;
 import android.opengl.EGLContext;
