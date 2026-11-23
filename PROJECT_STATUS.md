@@ -215,3 +215,11 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Cloud/document providers remain unsupported for direct Winlator drive mapping; the original game files are not copied or modified by folder selection.
 - Commit: 6c29ab841c91fbc99c1dbff5cccd31265c1499f3.
 - CI compilation and physical-device SAF permission validation are pending. Do not mark the game-folder workflow complete until the native workflow succeeds and the folder selection is tested on the target Android device.
+
+
+## 2026-11-23 — SAF validation and Vulkan capability safeguards
+- SAF game-folder validation now verifies persisted read/write permission and probes the executable, core MPQ archives, and a locale archive through ContentResolver before saving the native game path. The path parser also rejects backslash-containing paths.
+- Updated the branch README to describe the integrated native runtime accurately and distinguish a successful build from confirmed device gameplay.
+- Updated the native auto-tuner to inspect Android's reported Vulkan API version and select DXVK only when Vulkan 1.1 or newer is reported. A generic Vulkan feature flag alone is no longer treated as sufficient.
+- Commits: `6c29ab8` (SAF content validation), `b83092e` (path validation), `823d9c7` (README), `06b3176` and `9bc0e2e` (Vulkan version check and cleanup).
+- CI and physical-device validation for these changes are not yet confirmed. The last verified native workflow run predates these commits; do not treat the earlier successful build as verification of the new code.
