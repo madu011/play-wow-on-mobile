@@ -93,13 +93,40 @@ public final class WowLKAutoTuner {
         return values;
     }
 
-    private static boolean hasVulkan(Context context) {
-        PackageManager pm = context.getPackageManager();
+    private static int featureVersion(Context context, String featureName) {
         try {
-            return pm.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL);
-        } catch (Throwable ignored) {
-            return false;
+            android.content.pm.FeatureInfo[] features =
+                    context.getPackageManager().getSystemAvailableFeatures();
+            if (features == null) return 0;
+            for (android.content.pm.FeatureInfo feature : features) {
+                if (featureName.equals(feature.name)) return Math.max(0, feature.version);
+            }
+        } catch (Exception ignored) {
+            // Treat an unavailable capability report conservatively.
         }
+        return 0;
+    }
+
+    private static int vulkanApiVersion(Context context) {
+        return featureVersion(context, "android.hardware.vulkan.version");
+    }
+
+    private static boolean hasVulkan(Context context) {
+        // DXVK requires Vulkan 1.1+. A generic Vulkan feature flag can also
+        // describe devices that expose only an older API version.
+        int version = vulkanApiVersion(context);
+        int major = version >>> 22;
+        int minor = (version >>> 12) & 0x3ff;
+        return major > 1 || (major == 1 && minor >= 1);
+    }
+
+    private static String vulkanApiVersionLabel(Context context) {
+        int version = vulkanApiVersion(context);
+        if (version <= 0) return "Not reported by Android";
+        int major = version >>> 22;
+        int minor = (version >>> 12) & 0x3ff;
+        int patch = version & 0xfff;
+        return major + "." + minor + "." + patch;
     }
 
     private static int totalRamMb(Context context) {
@@ -119,9 +146,10 @@ public final class WowLKAutoTuner {
     public static void addGraphicsInfo(Context context, Map<String, Object> info) {
         info.putAll(readEglInfo());
         boolean vulkan = hasVulkan(context);
-        info.put("vulkanVersion", vulkan ? "Vulkan hardware feature reported by Android" : "Not reported by Android");
-        info.put("vulkanLevel", vulkan ? "Supported (feature flag)" : "Not reported");
-        info.put("graphicsApi", vulkan ? "Vulkan + OpenGL ES" : "OpenGL ES; Vulkan not reported");
+        int vulkanLevel = featureVersion(context, "android.hardware.vulkan.level");
+        info.put("vulkanVersion", vulkanApiVersionLabel(context));
+        info.put("vulkanLevel", vulkanLevel > 0 ? String.valueOf(vulkanLevel) : "Not reported by Android");
+        info.put("graphicsApi", vulkan ? "Vulkan 1.1+ + OpenGL ES" : "OpenGL ES; Vulkan 1.1+ not confirmed");
         info.put("totalRamMb", totalRamMb(context));
         info.put("availableRamMb", availableRamMb(context));
         DisplayMetrics metrics = new DisplayMetrics();
