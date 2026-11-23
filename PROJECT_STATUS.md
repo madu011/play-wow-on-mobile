@@ -206,3 +206,12 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Updated the Flutter UI to say LINK ORIGINAL WOW GAME FOLDER and explain that files remain in their existing location. Removed the copy-progress/cancel UI.
 - The previous import-oriented storage keys and method names remain for compatibility, but their value now represents the linked original folder path, not an imported copy.
 - In-place validation checks readable Wow.exe, non-empty Data/common.MPQ, Data/expansion.MPQ, Data/lichking.MPQ, and at least one four-letter locale folder containing a readable non-empty locale.MPQ. It does not hash every archive or guarantee every patch is intact. No file duplication is performed. Device testing is still required to confirm the original path is readable by the Wine runtime on Android.
+
+
+## 2026-11-23 — Validate game-folder contents through persisted SAF access
+- Replaced the previous path-only resolver with real Storage Access Framework validation before the selected path is saved for Winlator.
+- The selected tree must have persisted read and write permission, map to a path inside its storage volume, contain Wow.exe (or Wow-64.exe), and expose Data/common.MPQ, Data/expansion.MPQ, Data/lichking.MPQ, plus a locale directory containing a readable MPQ archive.
+- Required files are probed through ContentResolver streams instead of relying on File.canRead()/File.isFile(), which can give misleading results under Android scoped storage.
+- Cloud/document providers remain unsupported for direct Winlator drive mapping; the original game files are not copied or modified by folder selection.
+- Commit: 6c29ab841c91fbc99c1dbff5cccd31265c1499f3.
+- CI compilation and physical-device SAF permission validation are pending. Do not mark the game-folder workflow complete until the native workflow succeeds and the folder selection is tested on the target Android device.
