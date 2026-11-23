@@ -73,7 +73,7 @@ public final class WowGameFolderImporter {
 
         String volume = documentId.substring(0, separator);
         String relativePath = documentId.substring(separator + 1);
-        if (relativePath.startsWith("/") || relativePath.contains("\\\\")) {
+        if (relativePath.startsWith("/") || relativePath.contains("\\")) {
             throw new IOException("The selected folder path is invalid.");
         }
         for (String part : relativePath.split("/")) {
