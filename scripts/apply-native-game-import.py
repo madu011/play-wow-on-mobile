@@ -145,11 +145,11 @@ text = text.replace(
     "                startActivity(access);\n"
     "            } else {\n"
     "                RootFSInstaller.installIfNeeded(this);\n"
-    "                if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
+    "                if (autoPlayRequested) startAutoPlayWhenReady();\n"
     "            }\n"
     "        } else if (!requestAppPermissions()) {\n"
     "            RootFSInstaller.installIfNeeded(this);\n"
-    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
+    "            if (autoPlayRequested) startAutoPlayWhenReady();\n"
     "        }"
 )
 # On return from Android's special permission screen, continue the pending launch.
