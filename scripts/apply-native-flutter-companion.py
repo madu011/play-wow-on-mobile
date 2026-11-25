@@ -153,6 +153,10 @@ public class WowLKCompanionActivity extends FlutterActivity {
                         .putExtra("profile_id", 0));
                     result.success(true);
                     break;
+                case "openNativeDiagnostics":
+                    startActivity(new Intent(this, WowDiagnosticsActivity.class));
+                    result.success(true);
+                    break;
                 case "getDeviceInfo":
                     result.success(readBasicDeviceInfo());
                     break;
