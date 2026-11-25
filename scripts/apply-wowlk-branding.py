@@ -31,8 +31,9 @@ if not PATCH.is_file(): raise SystemExit(f"Missing exact user-supplied PNG icon:
 # Render opaque legacy launcher PNGs and a padded adaptive foreground.
 # Compositing onto the brand background prevents transparent checkerboard artifacts.
 background = (6, 18, 38, 255)
-with Image.open(PATCH).convert("RGBA") as source:
-    for density, size in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
+with Image.open(PATCH) as opened:
+    source = opened.convert("RGBA")
+for density, size in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
         target=RES/f"mipmap-{density}"/"ic_launcher.png"
         target.parent.mkdir(parents=True,exist_ok=True)
         canvas=Image.new("RGBA",(size,size),background)
