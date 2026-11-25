@@ -132,12 +132,12 @@ text = text[:start] + replacement + "\n}\n"
 # failures so the visible companion can receive input and offer a retry.
 failure_replacements = [
     (
-        "                    AppUtils.showToast(this, R.string.wow_provision_failed);\\n                    return;",
-        "                    AppUtils.showToast(this, R.string.wow_provision_failed);\\n                    if (launchedFromCompanion) finish();\\n                    return;",
+        "                    AppUtils.showToast(this, R.string.wow_provision_failed);\n                    return;",
+        "                    AppUtils.showToast(this, R.string.wow_provision_failed);\n                    if (launchedFromCompanion) finish();\n                    return;",
     ),
     (
-        "                        AppUtils.showToast(this, R.string.wow_container_failed);\\n                        return;",
-        "                        AppUtils.showToast(this, R.string.wow_container_failed);\\n                        if (launchedFromCompanion) finish();\\n                        return;",
+        "                        AppUtils.showToast(this, R.string.wow_container_failed);\n                        return;",
+        "                        AppUtils.showToast(this, R.string.wow_container_failed);\n                        if (launchedFromCompanion) finish();\n                        return;",
     ),
 ]
 for old, new in failure_replacements:
