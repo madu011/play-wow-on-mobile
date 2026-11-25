@@ -35,6 +35,9 @@ jobs:
           git -C vendor/wow-mobile-engine rev-parse HEAD
           test "$(git -C vendor/wow-mobile-engine rev-parse HEAD)" = "0c8068f617737d9c0fb6246f37b54f85b620b09d"
 
+      - name: Validate Python patch-generator syntax
+        run: python3 -m py_compile scripts/*.py
+
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
