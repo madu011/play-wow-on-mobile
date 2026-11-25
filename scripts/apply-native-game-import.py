@@ -9,7 +9,7 @@ IMPORTER_SOURCE = ROOT / "native-patches/WowGameFolderImporter.java"
 IMPORTER_TARGET = ENGINE / "app/src/main/java/com/winlator/wowmobile/WowGameFolderImporter.java"
 
 text = ACTIVITY.read_text(encoding="utf-8")
-if "WowGameFolderImporter.importTree" in text:
+if "WowGameFolderImporter.resolveAndValidateTree" in text:
     print("Native game-folder importer already applied.")
     raise SystemExit(0)
 
@@ -52,7 +52,7 @@ text = text.replace(
 )
 text = text.replace(
     '                updateStatus();\n            }\n            else finish();',
-    '                updateStatus();\n                if (autoPlayRequested) waitForRootFsAndLaunch(600);\n'
+    '                updateStatus();\n                if (autoPlayRequested) startAutoPlayWhenReady();\n'
     '            }\n            else finish();'
 )
 method = """
@@ -73,6 +73,7 @@ method = """
         if (attemptsLeft <= 0) {
             autoPlayRequested = false;
             Toast.makeText(this, "Winlator system files are not ready. Please try Play again.", Toast.LENGTH_LONG).show();
+            if (launchedFromCompanion) finish();
             return;
         }
         new Handler().postDelayed(() -> waitForRootFsAndLaunch(attemptsLeft - 1), 1000);
@@ -136,7 +137,7 @@ text = text.replace(
     "        autoPlayRequested = getIntent().getBooleanExtra(\"wow.lk.AUTO_PLAY\", false);\n"
     "        if (!requestAppPermissions()) {\n"
     "            RootFSInstaller.installIfNeeded(this);\n"
-    "            if (autoPlayRequested) waitForRootFsAndLaunch(600);\n"
+    "            if (autoPlayRequested) startAutoPlayWhenReady();\n"
     "        }",
     "        if (Build.VERSION.SDK_INT >= 30) {\n"
     "            if (autoPlayRequested && !Environment.isExternalStorageManager()) {\n"
