@@ -261,3 +261,5 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Cancelling or failing the native picker now closes the hidden host when it was opened by the Flutter companion, returning the user to the visible launcher.
 - The normal Flutter-first folder-linking flow remains unchanged.
 - A new integrated build is required to verify this source change.
+
+- Also ensured that SAF selection errors and native provisioning/container failures close the hidden host when launched from the Flutter companion, so the visible launcher can be used to retry.
