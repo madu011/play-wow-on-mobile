@@ -97,6 +97,9 @@ jobs:
       - name: Add persistent in-game keyboard button
         run: python3 scripts/apply-native-keyboard-button.py
 
+      - name: Capture native Wine and Box64 runtime logs
+        run: python3 scripts/apply-native-runtime-log-capture.py
+
       - name: Apply WOW LK disconnect diagnostics
         run: python3 scripts/apply-native-diagnostics.py
 
