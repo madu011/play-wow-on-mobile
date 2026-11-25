@@ -94,6 +94,9 @@ jobs:
       - name: Apply WOW LK touchscreen controls profile
         run: python3 scripts/apply-native-wow-controls.py
 
+      - name: Add persistent in-game keyboard button
+        run: python3 scripts/apply-native-keyboard-button.py
+
       - name: Apply WOW LK disconnect diagnostics
         run: python3 scripts/apply-native-diagnostics.py
 
