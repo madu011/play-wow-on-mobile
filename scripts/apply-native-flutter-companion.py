@@ -294,6 +294,16 @@ public class WowLKCompanionActivity extends FlutterActivity {
         return getSharedPreferences("wow_lk_companion", Context.MODE_PRIVATE);
     }
 
+    private File resolveGameFolderPath(Uri tree) {
+        try {
+            return WowGameFolderImporter.resolveAndValidateTree(this, tree);
+        } catch (java.io.IOException error) {
+            throw new IllegalStateException(
+                error.getMessage() == null ? "Could not resolve the selected WoW folder path." : error.getMessage(),
+                error);
+        }
+    }
+
     private Map<String, Object> scanGameTree(String rawTreeUri) {
         if (rawTreeUri == null) throw new IllegalArgumentException("No saved WoW folder permission. Select the original game folder again.");
         Uri tree = Uri.parse(rawTreeUri);
@@ -315,7 +325,7 @@ public class WowLKCompanionActivity extends FlutterActivity {
             rootItems = listDocumentChildren(tree, rootId);
         } catch (Exception providerError) {
             if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
-                return scanGameTreeDirect(WowGameFolderImporter.resolveAndValidateTree(this, tree));
+                return scanGameTreeDirect(resolveGameFolderPath(tree));
             }
             throw providerError;
         }
@@ -327,7 +337,7 @@ public class WowLKCompanionActivity extends FlutterActivity {
             if (entryName.equalsIgnoreCase("Data") && Boolean.TRUE.equals(entry.get("directory"))) hasRootData = true;
         }
         if ((!hasRootExe || !hasRootData) && Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
-            return scanGameTreeDirect(WowGameFolderImporter.resolveAndValidateTree(this, tree));
+            return scanGameTreeDirect(resolveGameFolderPath(tree));
         }
         boolean executable = false;
         boolean wtf = false;

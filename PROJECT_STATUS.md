@@ -248,3 +248,9 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Corrected the Flutter integration script's completion message to reflect the bridges that are now actually installed.
 - Commits containing these changes: `0534392` (saved locale restore), `261f475` and `b949f90` (icon image lifetime and indentation), plus the current consolidated source-hardening commit.
 - These are source-level corrections. The latest integrated APK still requires a fresh successful CI build and physical-device validation; gameplay is not yet certified.
+
+
+## 2026-11-25 — Fix Java checked-exception build blocker
+- Reviewed the failed native workflow logs. `WowLKCompanionActivity.scanGameTree()` called `WowGameFolderImporter.resolveAndValidateTree()` in two fallback branches without handling its declared `IOException`, stopping `compileReleaseJavaWithJavac`.
+- Added a small resolver wrapper that converts the checked storage error into a descriptive `IllegalStateException` for the Flutter method-channel error handler, and routed both fallback branches through it. The direct folder-selection path already catches exceptions and remains unchanged.
+- This fixes the specific compiler error reported by the failed run; a fresh workflow must still confirm the full APK build.
