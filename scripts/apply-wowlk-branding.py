@@ -34,15 +34,15 @@ background = (6, 18, 38, 255)
 with Image.open(PATCH) as opened:
     source = opened.convert("RGBA")
 for density, size in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
-        target=RES/f"mipmap-{density}"/"ic_launcher.png"
-        target.parent.mkdir(parents=True,exist_ok=True)
-        canvas=Image.new("RGBA",(size,size),background)
-        art=source.copy()
-        art.thumbnail((int(size*0.82),int(size*0.82)),Image.Resampling.LANCZOS)
-        canvas.alpha_composite(art,((size-art.width)//2,(size-art.height)//2))
-        canvas.convert("RGB").save(target,optimize=True)
-        legacy=target.with_suffix(".webp")
-        if legacy.exists(): legacy.unlink()
+    target=RES/f"mipmap-{density}"/"ic_launcher.png"
+    target.parent.mkdir(parents=True,exist_ok=True)
+    canvas=Image.new("RGBA",(size,size),background)
+    art=source.copy()
+    art.thumbnail((int(size*0.82),int(size*0.82)),Image.Resampling.LANCZOS)
+    canvas.alpha_composite(art,((size-art.width)//2,(size-art.height)//2))
+    canvas.convert("RGB").save(target,optimize=True)
+    legacy=target.with_suffix(".webp")
+    if legacy.exists(): legacy.unlink()
 
 # Adaptive foreground keeps the artwork inside Android's safe zone.
 nodpi=RES/"drawable-nodpi"
