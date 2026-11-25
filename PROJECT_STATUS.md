@@ -223,3 +223,10 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Updated the native auto-tuner to inspect Android's reported Vulkan API version and select DXVK only when Vulkan 1.1 or newer is reported. A generic Vulkan feature flag alone is no longer treated as sufficient.
 - Commits: `6c29ab8` (SAF content validation), `b83092e` (path validation), `823d9c7` (README), `06b3176` and `9bc0e2e` (Vulkan version check and cleanup).
 - CI and physical-device validation for these changes are not yet confirmed. The last verified native workflow run predates these commits; do not treat the earlier successful build as verification of the new code.
+
+
+## 2026-11-25 — Integrated build pipeline source-generation fix
+- Static review of the Flutter add-to-app integration script found two escaped-newline defects: the generated AndroidManifest permission insertion could emit literal backslash-n text, and the generated Java activity source could contain a literal `\\n` between field declarations.
+- Corrected both so the generated manifest remains valid XML and the generated companion Activity contains normal Java line breaks.
+- Commit: `f7a5c3c8bf80c0b5f21c3a7ba0e1eced5065cfc9`.
+- This is a source-level correction only. A fresh GitHub Actions run must complete successfully before the integrated APK can be called build-verified.
