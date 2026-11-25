@@ -48,7 +48,7 @@ if manage_permission not in manifest_text:
     anchor = '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>'
     if anchor not in manifest_text:
         raise SystemExit("Cannot add All files access permission: manifest anchor missing")
-    manifest.write_text(manifest_text.replace(anchor, anchor + "\\n    " + manage_permission, 1), encoding="utf-8")
+    manifest.write_text(manifest_text.replace(anchor, anchor + "\n    " + manage_permission, 1), encoding="utf-8")
 replace_once(
     manifest,
     '''        <activity android:name="com.winlator.wowmobile.WowMobileActivity"
@@ -122,7 +122,8 @@ import io.flutter.plugin.common.MethodChannel;
 /** Hosts the Flutter companion and bridges its game-folder and realm settings to Winlator. */
 public class WowLKCompanionActivity extends FlutterActivity {
     private static final String CHANNEL = "wow.lk/storage";
-    private static final int REQUEST_GAME_TREE = 4019;\n    private static final int REQUEST_ALL_FILES_ACCESS = 4021;
+    private static final int REQUEST_GAME_TREE = 4019;
+    private static final int REQUEST_ALL_FILES_ACCESS = 4021;
     private MethodChannel.Result pendingFolderResult;
     private AtomicBoolean importCancelled;
     private MethodChannel storageChannel;
