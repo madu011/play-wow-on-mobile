@@ -237,3 +237,14 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Updated the native-settings prerequisite message to instruct users to link the original WoW 3.3.5a folder through Android's folder picker.
 - Commit: `e37fb2710302fe17ffac38d278fed3c6f1250c2f`.
 - This is a UI wording correction; no runtime behavior or gameplay verification is claimed.
+
+
+## 2026-11-25 — Native launch, locale restore, and build-script hardening
+- Fixed the native host's auto-play startup so the RootFS readiness loop is entered through one guarded method. This prevents overlapping launch loops when Android resumes the hidden host after permission handling.
+- The hidden native host now closes if RootFS is still unavailable after the bounded wait, allowing the visible Flutter launcher to retry cleanly.
+- On app restart, the saved SAF folder is rescanned and its available WoW locale folders are restored before Realm settings can be applied. Removed the unsafe implicit `enUS` fallback when no locale was detected.
+- Fixed launcher icon generation so the converted PNG remains open while legacy and adaptive icon assets are rendered; corrected the loop indentation that otherwise stopped the branding script from parsing.
+- Added fail-fast checks to the native game-folder patch generator so missing or duplicated launch/SAF insertion points stop the pipeline rather than silently generating incomplete Java.
+- Corrected the Flutter integration script's completion message to reflect the bridges that are now actually installed.
+- Commits containing these changes: `0534392` (saved locale restore), `261f475` and `b949f90` (icon image lifetime and indentation), plus the current consolidated source-hardening commit.
+- These are source-level corrections. The latest integrated APK still requires a fresh successful CI build and physical-device validation; gameplay is not yet certified.

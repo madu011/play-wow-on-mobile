@@ -620,4 +620,4 @@ public class WowLKCompanionActivity extends FlutterActivity {
 
 print("Flutter companion integration patch applied.")
 print("Launcher: Flutter companion Activity; native WoW launcher remains in the same APK.")
-print("Pending bridge: SAF game-folder selection and Realm Manager profile synchronization.")
+print("Integrated bridges: SAF game-folder linking, Realm Manager realmlist writes, device diagnostics, and native launcher.")

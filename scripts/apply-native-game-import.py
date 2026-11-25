@@ -171,6 +171,26 @@ text = text.replace(
     "                    if (launchedFromCompanion) finish();"
 )
 
+required_fragments = [
+    "private void startAutoPlayWhenReady()",
+    "private void waitForRootFsAndLaunch(int attemptsLeft)",
+    "WowGameFolderImporter.resolveAndValidateTree(this, treeUri)",
+    "Intent.ACTION_OPEN_DOCUMENT_TREE",
+    "Environment.isExternalStorageManager()",
+    "startActivityForResult(intent, REQUEST_WOW_GAME_TREE)",
+]
+for fragment in required_fragments:
+    if fragment not in text:
+        raise SystemExit(f"Native game-folder patch incomplete; missing generated source fragment: {fragment}")
+if text.count("protected void onActivityResult") != 1:
+    raise SystemExit("Expected exactly one native onActivityResult handler after SAF integration.")
+if text.count("private void startAutoPlayWhenReady()") != 1:
+    raise SystemExit("Expected exactly one guarded native auto-play entry point.")
+if text.count("private void waitForRootFsAndLaunch(int attemptsLeft)") != 1:
+    raise SystemExit("Expected exactly one RootFS readiness loop.")
+if text.count("waitForRootFsAndLaunch(600)") != 1:
+    raise SystemExit("Native auto-play must enter the RootFS readiness loop through the guarded entry point only.")
+
 IMPORTER_TARGET.parent.mkdir(parents=True, exist_ok=True)
 IMPORTER_TARGET.write_text(IMPORTER_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
 ACTIVITY.write_text(text, encoding="utf-8")
