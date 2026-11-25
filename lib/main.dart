@@ -100,14 +100,22 @@ class _LauncherPageState extends State<LauncherPage> {
   int selectedNavTab = 0;
   Map<String, dynamic> deviceInfo = {};
   bool deviceScanComplete = false;
+  bool gameImporting = false;
+  bool gameImportCancelling = false;
+  int gameImportCopiedBytes = 0;
+  int gameImportTotalBytes = 0;
+  String gameImportCurrentPath = 'Preparing game folder...';
   final GlobalKey _gameSectionKey = GlobalKey();
   final GlobalKey _serverSectionKey = GlobalKey();
   final GlobalKey _toolsSectionKey = GlobalKey();
+  final ScrollController _pageScrollController = ScrollController();
   static const _storageChannel = MethodChannel('wow.lk/storage');
 
   @override
   void initState() {
     super.initState();
+    _pageScrollController.addListener(_syncSelectedTabToScroll);
+    _storageChannel.setMethodCallHandler(_handleStorageMethodCall);
     _loadSavedGameAccess();
     _initializePreferences();
   }
@@ -285,12 +293,62 @@ class _LauncherPageState extends State<LauncherPage> {
     return 'Generic • OpenGL ES compatibility profile';
   }
 
+  Future<dynamic> _handleStorageMethodCall(MethodCall call) async {
+    if (call.method == 'gameImportStarted' || call.method == 'gameImportProgress') {
+      final data = Map<String, dynamic>.from(call.arguments as Map? ?? const {});
+      if (!mounted) return null;
+      setState(() {
+        gameImporting = true;
+        gameImportCancelling = false;
+        gameImportCurrentPath = (data['currentPath'] ?? 'Preparing game folder...').toString();
+        gameImportCopiedBytes = (data['copiedBytes'] as num?)?.toInt() ?? 0;
+        gameImportTotalBytes = (data['totalBytes'] as num?)?.toInt() ?? 0;
+      });
+    } else if (call.method == 'gameImportFinished') {
+      final data = Map<String, dynamic>.from(call.arguments as Map? ?? const {});
+      if (!mounted) return null;
+      setState(() {
+        gameImporting = false;
+        gameImportCancelling = false;
+        if (data['success'] == true && data['importedPath'] != null) {
+          gameFolder = data['importedPath'].toString();
+        }
+      });
+    }
+    return null;
+  }
+
+  Future<void> _cancelGameImport() async {
+    if (!gameImporting || gameImportCancelling) return;
+    setState(() => gameImportCancelling = true);
+    try {
+      await _storageChannel.invokeMethod<bool>('cancelGameImport');
+    } on PlatformException catch (error) {
+      if (mounted) showInfo('Folder linking status', error.message ?? 'The original game folder is linked directly; no import or copy is running.');
+    }
+  }
+
+  String _formatImportBytes(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   Future<void> _loadSavedGameAccess() async {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
-      if (mounted && uri != null) {
-        setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; });
-        await _refreshGameLocales();
+      final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
+      if (!mounted || uri == null) return;
+      setState(() {
+        gameTreeUri = uri;
+        gameFolder = importedPath ?? 'Linked original WoW folder';
+      });
+      // Restore the locale list as well as the saved folder URI. Without this,
+      // relaunching the app could silently fall back to enUS on other clients.
+      await _refreshGameLocales();
+    } on PlatformException catch (error) {
+      if (mounted) {
+        showInfo('Saved game folder unavailable',
+            error.message ?? 'Please grant access to the original WoW folder again.');
       }
     } catch (_) {}
   }
@@ -299,53 +357,47 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
       if (!mounted || uri == null) return;
-      setState(() { gameTreeUri = uri; gameFolder = 'Android selected WoW folder'; selectedLocale = null; });
+      final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
+      setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Linked original WoW folder'; selectedLocale = null; gameImporting = false; gameImportCancelling = false; });
       await _refreshGameLocales();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Game folder write access granted.')),
+        const SnackBar(content: Text('Original WoW folder linked. No files copied.')),
       );
       final profile = selectedServer;
       if (profile != null) await applyRealmToGameFolder(profile);
     } on PlatformException catch (error) {
+      if (mounted) setState(() { gameImporting = false; gameImportCancelling = false; });
       if (mounted) showInfo('Folder access not granted', error.message ?? 'Please select the WoW game folder.');
     }
   }
 
 
   Future<void> _refreshGameLocales() async {
-    final treeUri = gameTreeUri;
-    if (treeUri == null) return;
+    final uri = gameTreeUri;
+    if (uri == null) return;
     try {
-      final scan = await _storageChannel.invokeMapMethod<String, dynamic>('scanGameTree', {'treeUri': treeUri});
-      final locales = (scan?['localeFolders'] as List? ?? const []).cast<String>();
+      final report = await _storageChannel.invokeMapMethod<String, dynamic>(
+        'scanGameTree',
+        {'treeUri': uri},
+      );
+      final locales = (report?['localeFolders'] as List? ?? const []).cast<String>();
       if (!mounted) return;
       setState(() {
         gameLocales = locales;
-        if (selectedLocale != null && !locales.contains(selectedLocale)) selectedLocale = null;
-        if (locales.length == 1) selectedLocale = locales.first;
+        if (locales.isNotEmpty &&
+            (selectedLocale == null || !locales.contains(selectedLocale))) {
+          selectedLocale = locales.first;
+        }
       });
-    } catch (_) {
-      if (mounted) setState(() => gameLocales = []);
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      showInfo('Game folder access issue',
+          error.message ?? 'Android could not list the selected WoW folder. Please grant access again.');
     }
   }
 
-  Future<String?> _chooseGameLocale() async {
-    if (gameLocales.isEmpty) await _refreshGameLocales();
-    if (!mounted || gameLocales.isEmpty) return null;
-    if (gameLocales.length == 1) return gameLocales.first;
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        backgroundColor: panel,
-        title: const Text('Choose game language', style: TextStyle(color: gold)),
-        children: gameLocales.map((locale) => SimpleDialogOption(
-          onPressed: () => Navigator.pop(dialogContext, locale),
-          child: Text(locale, style: const TextStyle(color: Colors.white)),
-        )).toList(),
-      ),
-    );
-  }
+  Future<String?> _chooseGameLocale() async => selectedLocale;
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
     final treeUri = gameTreeUri;
@@ -383,17 +435,94 @@ class _LauncherPageState extends State<LauncherPage> {
       showInfo('Could not update realmlist', 'Details: $error');
     }
   }
+  Future<void> _openNativeScreen(String method, String title, String description) async {
+    try {
+      await _storageChannel.invokeMethod<bool>(method);
+    } on PlatformException catch (error) {
+      if (mounted) showInfo(title, error.message ?? error.code);
+    } on MissingPluginException {
+      if (mounted) showInfo(title, 'This screen is available in the integrated WOW LK Android build.');
+    } catch (error) {
+      if (mounted) showInfo(title, 'Could not open this screen: $error');
+    }
+  }
+
+  Future<void> _applyAutoContainerSettings() async {
+    try {
+      final result = await _storageChannel.invokeMapMethod<String, dynamic>(
+        'applyAutoContainerSettings',
+      );
+      if (!mounted || result == null) return;
+      if (result['success'] != true) {
+        showInfo('Winlator Auto Configure', result['message']?.toString() ??
+            'Create the WoW container first, then try again.');
+        return;
+      }
+      await _detectDevice();
+      if (!mounted) return;
+      showInfo(
+        'Winlator settings applied',
+        'WOW LK detected your hardware and saved these settings to the WoW container:\\n\\n'
+        'Graphics driver: ${result['graphicsDriver']}\\n'
+        'DirectX wrapper: ${result['dxWrapper']}\\n'
+        'Box64 preset: ${result['box64Preset']}\\n'
+        'Container resolution: ${result['screenSize']}\\n'
+        'Detected GPU: ${result['gpuRenderer']}\\n'
+        'RAM: ${result['totalRamMb']} MB • CPU cores: ${result['cpuCores']}\\n\\n'
+        '${result['note']}',
+      );
+    } on PlatformException catch (error) {
+      if (mounted) showInfo('Auto Configure failed', error.message ?? error.code);
+    } on MissingPluginException {
+      if (mounted) showInfo('Auto Configure unavailable',
+          'Update to the integrated WOW LK build that includes native Winlator auto-tuning.');
+    } catch (error) {
+      if (mounted) showInfo('Auto Configure failed', '$error');
+    }
+  }
+
   void _jumpToSection(int index, GlobalKey key) {
+    if (!mounted) return;
     setState(() => selectedNavTab = index);
-    final target = key.currentContext;
-    if (target != null) {
+    // Resolve the section after the tab's tap frame so Android can finish
+    // dispatching the pointer event before the scroll animation begins.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageScrollController.hasClients) return;
+      final target = key.currentContext;
+      if (target == null) return;
       Scrollable.ensureVisible(
         target,
-        duration: const Duration(milliseconds: 420),
+        duration: const Duration(milliseconds: 650),
         curve: Curves.easeInOutCubic,
-        alignment: .04,
+        alignment: .02,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
       );
+    });
+  }
+
+  // Keep the top navigation highlight synchronized when the user scrolls manually.
+  void _syncSelectedTabToScroll() {
+    if (!mounted) return;
+    final sections = <GlobalKey>[_gameSectionKey, _serverSectionKey, _toolsSectionKey];
+    var activeIndex = 0;
+    for (var i = 0; i < sections.length; i++) {
+      final context = sections[i].currentContext;
+      final renderObject = context?.findRenderObject();
+      if (renderObject is RenderBox && renderObject.attached) {
+        final top = renderObject.localToGlobal(Offset.zero).dy;
+        if (top <= 230) activeIndex = i;
+      }
     }
+    if (activeIndex != selectedNavTab) {
+      setState(() => selectedNavTab = activeIndex);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageScrollController.removeListener(_syncSelectedTabToScroll);
+    _pageScrollController.dispose();
+    super.dispose();
   }
 
   void showInfo(String title, String message) {
@@ -438,6 +567,7 @@ class _LauncherPageState extends State<LauncherPage> {
           ),
           SafeArea(
             child: ListView(
+          controller: _pageScrollController,
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
           children: [
             Row(
@@ -450,7 +580,10 @@ class _LauncherPageState extends State<LauncherPage> {
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: gold.withValues(alpha: .45)),
                   ),
-                  child: const Icon(Icons.shield_moon, color: gold, size: 29),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.asset('assets/wow-lk-user-supplied.png', fit: BoxFit.cover),
+                  ),
                 ),
                 const SizedBox(width: 13),
                 const Expanded(
@@ -471,7 +604,7 @@ class _LauncherPageState extends State<LauncherPage> {
                 IconButton(
                   onPressed: () => showInfo(
                     'About WOW LK',
-                    'A community launcher prototype. The Windows game runtime and graphics compatibility layer are not bundled in this first build.',
+                    'The Winlator-based native runtime is included in this WOW LK app. Actual game launch and device compatibility still need physical-phone testing.',
                   ),
                   icon: const Icon(Icons.info_outline, color: muted),
                 ),
@@ -540,36 +673,37 @@ class _LauncherPageState extends State<LauncherPage> {
                   const SizedBox(height: 14),
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
-                    icon: const Icon(Icons.drive_folder_upload),
-                    label: const Text('SELECT WOW GAME FOLDER'),
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('GRANT READ ACCESS'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
                       side: const BorderSide(color: gold),
                       minimumSize: const Size.fromHeight(46),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 9),
                   OutlinedButton.icon(
                     onPressed: _requestGameFolderAccess,
-                    icon: const Icon(Icons.folder_shared_outlined),
-                    label: Text(gameTreeUri == null ? 'GRANT WRITE ACCESS' : 'RESELECT WRITE ACCESS'),
+                    icon: const Icon(Icons.edit_document),
+                    label: const Text('GRANT WRITE ACCESS'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: gold,
-                      side: BorderSide(color: gold.withValues(alpha: .65)),
-                      minimumSize: const Size.fromHeight(42),
+                      side: const BorderSide(color: gold),
+                      minimumSize: const Size.fromHeight(44),
                     ),
                   ),
+                  const SizedBox(height: 9),
                   Text(
                     gameTreeUri == null
-                        ? 'Select the same game folder in Android’s system picker to allow safe realmlist updates.'
-                        : 'Android folder write access is saved.',
+                        ? 'Grant Android read/write access, then select the original folder containing Wow.exe and Data/. No game files are copied.'
+                        : 'Folder permission is saved. Game files remain in their original location.',
                     style: const TextStyle(color: muted, fontSize: 10),
                   ),
                 ],
               ),
             ),
-            if (gameFolder != null) ...[
-              const SizedBox(height: 16),
+            if (gameTreeUri != null && gameFolder != null) ...[
+              const SizedBox(height: 14),
               GameFolderInspector(folderPath: gameFolder!, treeUri: gameTreeUri),
             ],
             const SizedBox(height: 20),
@@ -601,7 +735,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     value: graphicsPreset,
                     decoration: const InputDecoration(
                       labelText: 'Graphics preset',
-                      helperText: 'Starting recommendation only; not applied to WoW yet',
+                      helperText: 'Use the native game and container settings below to apply runtime values',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
@@ -638,7 +772,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Values are suggested starting points. They will not affect the game until a compatible runtime is integrated.',
+                    'These are launcher recommendations. Apply actual game and graphics values in the native settings below.',
                     style: TextStyle(color: muted, fontSize: 10),
                   ),
                   const Divider(color: Color(0xFF293448)),
@@ -711,6 +845,62 @@ class _LauncherPageState extends State<LauncherPage> {
                       label: const Text('Restore recommended settings'),
                     ),
                   ),
+                  const Divider(color: Color(0xFF293448)),
+                  const Text('NATIVE RUNTIME SETTINGS',
+                      style: TextStyle(color: gold, fontSize: 11,
+                          fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Open the built-in Winlator and WoW configuration screens inside this same WOW LK app.',
+                    style: TextStyle(color: muted, fontSize: 11),
+                  ),
+                  const SizedBox(height: 10),
+                  _nativeSettingsTile(
+                    icon: Icons.sports_esports,
+                    title: 'WoW Game Settings',
+                    subtitle: 'Realm, game resolution and view distance',
+                    onTap: () => _openNativeScreen(
+                      'openNativeWowSettings',
+                      'WoW settings unavailable',
+                      'Link the original WoW 3.3.5a game folder first using the Android folder picker.',
+                    ),
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.tune,
+                    title: 'Winlator Container Settings',
+                    subtitle: 'Graphics driver, DX wrapper, Box64, Wine and audio',
+                    onTap: () => _openNativeScreen(
+                      'openNativeContainerSettings',
+                      'Container settings unavailable',
+                      'Create the WoW runtime container by launching the game once, then open these settings.',
+                    ),
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.auto_awesome,
+                    title: 'AUTO CONFIGURE WINLATOR',
+                    subtitle: 'Detect GPU, CPU and RAM; apply a compatible driver, DX wrapper and Box64 profile',
+                    onTap: _applyAutoContainerSettings,
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.gamepad,
+                    title: 'Touch Controls Editor',
+                    subtitle: 'Move, resize and configure on-screen buttons',
+                    onTap: () => _openNativeScreen(
+                      'openNativeControlsEditor',
+                      'Touch controls unavailable',
+                      'The built-in controls editor could not be opened.',
+                    ),
+                  ),
+                  _nativeSettingsTile(
+                    icon: Icons.article_outlined,
+                    title: 'Disconnect Logs & Diagnostics',
+                    subtitle: 'Collect Wine, Box64, realm and network logs; share the report',
+                    onTap: () => _openNativeScreen(
+                      'openNativeDiagnostics',
+                      'Diagnostics unavailable',
+                      'The disconnect diagnostic screen could not be opened.',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -718,12 +908,27 @@ class _LauncherPageState extends State<LauncherPage> {
             SizedBox(
               height: 58,
               child: FilledButton.icon(
-                onPressed: () => showInfo(
-                  'Runtime not ready',
-                  'The game runtime is not ready yet. Selected realm: ${selectedServer?.name ?? 'None'}. Realmlist: ${selectedServer?.realmlistLine ?? 'Not selected'}. Realm profiles are saved locally, but applying the selected realmlist to the game folder and launching the game still need runtime integration.',
-                ),
+                onPressed: () async {
+                  try {
+                    await _storageChannel.invokeMethod<bool>('openNativeGameLauncher');
+                  } on PlatformException catch (error) {
+                    if (mounted) {
+                      showInfo(
+                        'Game engine unavailable',
+                        'The native WoW engine could not be opened: ${error.message ?? error.code}',
+                      );
+                    }
+                  } on MissingPluginException {
+                    if (mounted) {
+                      showInfo(
+                        'Game engine unavailable',
+                        'This companion screen must run inside the integrated WOW LK Android app.',
+                      );
+                    }
+                  }
+                },
                 icon: const Icon(Icons.play_arrow, size: 28),
-                label: const Text('PLAY WORLD OF WARCRAFT',
+                label: const Text('LAUNCH WOW LK RUNTIME',
                     style: TextStyle(fontWeight: FontWeight.w900,
                         letterSpacing: 1)),
                 style: FilledButton.styleFrom(
@@ -736,7 +941,7 @@ class _LauncherPageState extends State<LauncherPage> {
             ),
             const SizedBox(height: 13),
             const Center(
-              child: Text('LAUNCHER PREVIEW · GAME ENGINE INTEGRATION PENDING',
+              child: Text('WINLATOR RUNTIME INCLUDED · DEVICE GAMEPLAY TEST PENDING',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: muted, fontSize: 9, letterSpacing: 1)),
             ),
@@ -754,8 +959,11 @@ class _LauncherPageState extends State<LauncherPage> {
     final rows = <String, String>{
       'Device': '${deviceInfo['manufacturer'] ?? ''} ${deviceInfo['model'] ?? ''}'.trim(),
       'Android': deviceInfo['androidVersion']?.toString() ?? 'Unknown',
+      'CPU model': deviceInfo['cpuModel']?.toString() ?? 'Unknown',
       'CPU cores': deviceInfo['cpuCores']?.toString() ?? 'Unknown',
+      'CPU architecture': deviceInfo['cpuArchitecture']?.toString() ?? 'Unknown',
       'RAM MB': deviceInfo['totalRamMb']?.toString() ?? 'Unknown',
+      'Available RAM MB': deviceInfo['availableRamMb']?.toString() ?? 'Unknown',
       'GPU vendor': deviceInfo['gpuVendor']?.toString() ?? 'Unknown',
       'GPU renderer': deviceInfo['gpuRenderer']?.toString() ?? 'Unknown',
       'OpenGL ES': deviceInfo['openGlVersion']?.toString() ?? 'Unknown',
@@ -772,6 +980,43 @@ class _LauncherPageState extends State<LauncherPage> {
         '\\n\\nNote: estimates are heuristic only. No WoW runtime benchmark has been performed.';
   }
 
+  Widget _nativeSettingsTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 7),
+      child: Material(
+        color: const Color(0xFF151F2E),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            child: Row(children: [
+              Icon(icon, color: gold, size: 22),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: const TextStyle(
+                    color: muted, fontSize: 10)),
+                ],
+              )),
+              const Icon(Icons.chevron_right, color: muted),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _deviceInfoPanel() {
     final info = deviceInfo;
     final ram = info['totalRamMb'] is num
@@ -780,8 +1025,13 @@ class _LauncherPageState extends State<LauncherPage> {
     final rows = <(String, String)>[
       ('Device', '${info['manufacturer'] ?? 'Detecting'} ${info['model'] ?? ''}'.trim()),
       ('Android', info['androidVersion']?.toString() ?? 'Detecting'),
+      ('CPU model', info['cpuModel']?.toString() ?? 'Detecting'),
       ('CPU', info['cpuCores'] == null ? 'Detecting' : '${info['cpuCores']} cores'),
+      ('CPU architecture', info['cpuArchitecture']?.toString() ?? 'Detecting'),
       ('RAM', ram),
+      ('Available RAM', info['availableRamMb'] is num
+          ? '${((info['availableRamMb'] as num) / 1024).toStringAsFixed(1)} GB'
+          : 'Detecting'),
       ('Architecture', (info['supportedAbis'] as List?)?.join(', ') ?? 'Detecting'),
       ('GPU Vendor', info['gpuVendor']?.toString() ?? 'Detecting'),
       ('GPU Renderer', info['gpuRenderer']?.toString() ?? 'Detecting'),
@@ -825,7 +1075,7 @@ class _LauncherPageState extends State<LauncherPage> {
           Text(
             info['error']?.toString() ??
                 (deviceScanComplete
-                    ? 'Suggested graphics values are starting points only. They are not applied to the game; verify performance in a real runtime before increasing quality.'
+                    ? 'GPU details are read from Android graphics. Use AUTO CONFIGURE WINLATOR to save a hardware-matched starting profile to the actual WoW container. Performance still needs an in-game test.'
                     : 'Reading device information directly from Android…'),
             style: const TextStyle(color: muted, fontSize: 10),
           ),

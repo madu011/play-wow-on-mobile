@@ -1,0 +1,136 @@
+name: Native WoW runtime build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - runtime/native-engine-import
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '17'
+  ANDROID_PLATFORM: '34'
+  ANDROID_NDK_VERSION: '24.0.8215888'
+  CMAKE_VERSION: '3.22.1'
+
+jobs:
+  build-native-engine:
+    name: Build pinned WoW Mobile native engine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout migration branch and native engine
+        uses: actions/checkout@v4
+        with:
+          ref: runtime/native-engine-import
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned upstream source
+        shell: bash
+        run: |
+          test -f vendor/wow-mobile-engine/gradlew
+          test -f vendor/wow-mobile-engine/app/src/main/cpp/CMakeLists.txt
+          git -C vendor/wow-mobile-engine rev-parse HEAD
+          test "$(git -C vendor/wow-mobile-engine rev-parse HEAD)" = "0c8068f617737d9c0fb6246f37b54f85b620b09d"
+
+      - name: Validate Python patch-generator syntax
+        run: python3 -m py_compile scripts/*.py
+
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install pinned Android build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;34.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${CMAKE_VERSION}"
+
+      - name: Set up Flutter companion toolchain
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: stable
+          cache: true
+
+      - name: Create Flutter companion module host
+        run: flutter create --template=module --org com.example --project-name wowlk_companion flutter_companion_module
+
+      - name: Prepare Flutter companion module sources
+        run: python3 scripts/prepare-flutter-companion-module.py
+
+      - name: Resolve Flutter companion dependencies
+        working-directory: flutter_companion_module
+        run: flutter pub get
+
+      - name: Build Flutter companion Android archive
+        working-directory: flutter_companion_module
+        run: flutter build aar --no-debug --no-profile
+
+      - name: Integrate Flutter companion into native Android app
+        run: python3 scripts/apply-native-flutter-companion.py
+
+      - name: Apply hardware detection and Winlator auto-tuning
+        run: python3 scripts/apply-native-auto-tuning.py
+
+      - name: Install icon image tooling
+        run: python3 -m pip install --disable-pip-version-check Pillow
+
+      - name: Apply WOW LK launcher branding
+        run: python3 scripts/apply-wowlk-branding.py
+
+      - name: Apply native SAF game-folder importer
+        run: python3 scripts/apply-native-game-import.py
+
+      - name: Apply WOW LK touchscreen controls profile
+        run: python3 scripts/apply-native-wow-controls.py
+
+      - name: Add persistent in-game keyboard button
+        run: python3 scripts/apply-native-keyboard-button.py
+
+      - name: Capture native Wine and Box64 runtime logs
+        run: python3 scripts/apply-native-runtime-log-capture.py
+
+      - name: Apply WOW LK disconnect diagnostics
+        run: python3 scripts/apply-native-diagnostics.py
+
+      - name: Build WOW LK branded native runtime APK
+        working-directory: vendor/wow-mobile-engine
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Upload unsigned native runtime APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wow-mobile-native-runtime-unsigned
+          path: vendor/wow-mobile-engine/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build installable debug test APK
+        working-directory: vendor/wow-mobile-engine
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Verify debug APK signature
+        run: |
+          APK="vendor/wow-mobile-engine/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
+
+      - name: Upload signed debug test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wow-lk-integrated-debug-test-apk
+          path: vendor/wow-mobile-engine/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

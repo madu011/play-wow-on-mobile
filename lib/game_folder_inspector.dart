@@ -23,6 +23,7 @@ class GameFolderReport {
     required this.folderExists,
     required this.executableFound,
     required this.dataFolderFound,
+    required this.wtfFolderFound,
     required this.localeFolders,
     required this.realmlistFiles,
     required this.archiveCount,
@@ -32,11 +33,13 @@ class GameFolderReport {
     required this.missingCoreArchives,
     required this.totalArchiveBytes,
     required this.notes,
+    this.detectedFiles = const [],
   });
 
   final bool folderExists;
   final bool executableFound;
   final bool dataFolderFound;
+  final bool wtfFolderFound;
   final List<String> localeFolders;
   final List<String> realmlistFiles;
   final int archiveCount;
@@ -46,6 +49,7 @@ class GameFolderReport {
   final List<String> missingCoreArchives;
   final int totalArchiveBytes;
   final List<String> notes;
+  final List<String> detectedFiles;
 
   int get passedChecks =>
       (folderExists ? 1 : 0) +
@@ -70,11 +74,13 @@ class GameFolderReport {
       final empty = (raw['emptyArchiveFiles'] as List? ?? const []).cast<String>();
       final missing = (raw['missingCoreArchives'] as List? ?? const []).cast<String>();
       final notes = (raw['notes'] as List? ?? const []).cast<String>();
+      final detectedFiles = (raw['detectedFiles'] as List? ?? const []).cast<String>();
       final count = raw['archiveCount'] as int? ?? 0;
       return GameFolderReport(
         folderExists: raw['folderExists'] as bool? ?? true,
         executableFound: raw['executableFound'] as bool? ?? false,
         dataFolderFound: raw['dataFolderFound'] as bool? ?? false,
+        wtfFolderFound: raw['wtfFolderFound'] as bool? ?? false,
         localeFolders: locales,
         realmlistFiles: realmlists,
         archiveCount: count,
@@ -83,6 +89,7 @@ class GameFolderReport {
         emptyArchiveFiles: empty,
         missingCoreArchives: missing,
         totalArchiveBytes: (raw['totalArchiveBytes'] as num? ?? 0).toInt(),
+        detectedFiles: detectedFiles,
         notes: [
           ...notes,
           if (count == 0) 'No MPQ archives were visible through Android folder access. Re-select the actual game folder and allow access to its contents.',
@@ -96,6 +103,7 @@ class GameFolderReport {
         folderExists: false,
         executableFound: false,
         dataFolderFound: false,
+        wtfFolderFound: false,
         localeFolders: [],
         realmlistFiles: [],
         archiveCount: 0,
@@ -188,6 +196,7 @@ class GameFolderReport {
       folderExists: true,
       executableFound: executableFound,
       dataFolderFound: dataFolderFound,
+      wtfFolderFound: await Directory('${root.path}/WTF').exists(),
       localeFolders: locales,
       realmlistFiles: realmlists,
       archiveCount: archives,
@@ -367,6 +376,7 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                     ),
                   ],
                   _checkRow('Data folder', report.dataFolderFound),
+                  _checkRow('WTF folder', report.wtfFolderFound),
                   _checkRow('Locale folders', report.localeFolders.isNotEmpty,
                       detail: report.localeFolders.isEmpty
                           ? 'None detected'
@@ -377,6 +387,24 @@ class _GameFolderInspectorState extends State<GameFolderInspector> {
                           : report.realmlistFiles.join(', ')),
                   _checkRow('MPQ archives', report.archiveCount > 0,
                       detail: '${report.archiveCount} found'),
+                  const SizedBox(height: 8),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(left: 12, bottom: 8),
+                    iconColor: _inspectorGold,
+                    collapsedIconColor: _inspectorMuted,
+                    title: Text('DETECTED FILES (${report.detectedFiles.length})',
+                        style: const TextStyle(color: _inspectorGold, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: .8)),
+                    children: report.detectedFiles.isEmpty
+                        ? [const Align(alignment: Alignment.centerLeft, child: Text('No file names returned by Android. Re-select the game folder.', style: TextStyle(color: Colors.orangeAccent, fontSize: 10)))]
+                        : report.detectedFiles.map((file) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text('✓  $file', style: const TextStyle(color: _inspectorMuted, fontSize: 10)),
+                            ),
+                          )).toList(),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'GAME DATA INTEGRITY',
