@@ -891,6 +891,16 @@ class _LauncherPageState extends State<LauncherPage> {
                       'The built-in controls editor could not be opened.',
                     ),
                   ),
+                  _nativeSettingsTile(
+                    icon: Icons.article_outlined,
+                    title: 'Disconnect Logs & Diagnostics',
+                    subtitle: 'Collect Wine, Box64, realm and network logs; share the report',
+                    onTap: () => _openNativeScreen(
+                      'openNativeDiagnostics',
+                      'Diagnostics unavailable',
+                      'The disconnect diagnostic screen could not be opened.',
+                    ),
+                  ),
                 ],
               ),
             ),
