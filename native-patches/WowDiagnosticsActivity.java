@@ -31,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -147,8 +149,10 @@ public class WowDiagnosticsActivity extends Activity {
             out.append("DNS/TCP checks skipped: no hostname found in realmlist.wtf\n");
         }
 
-        out.append("\nFILTERED ANDROID APP LOGS (recent)\n");
+        out.append("\nANDROID LOGCAT (recent; filtered for WoW/runtime/network failures)\n");
         out.append(readFilteredLogcat());
+        out.append("\nAPP-ACCESSIBLE WINE / BOX64 / RUNTIME LOG FILES\n");
+        out.append(appendRuntimeFiles());
         out.append("\nEND OF REPORT\n");
         return out.toString();
     }
@@ -239,9 +243,9 @@ public class WowDiagnosticsActivity extends Activity {
         StringBuilder result = new StringBuilder();
         Process process = null;
         try {
-            process = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-v", "threadtime", "-t", "1200"});
+            process = Runtime.getRuntime().exec(new String[]{"logcat", "-b", "all", "-d", "-v", "threadtime", "-t", "2200"});
             int count = 0;
-            Pattern useful = Pattern.compile("(?i)(winlator|wow|wine|box64|realm|dns|socket|connect|fatal|exception|crash|error|warn|vulkan|egl)");
+            Pattern useful = Pattern.compile("(?i)(winlator|wow|wine|wineserver|box64|realm|realmlist|worldserver|authserver|dns|socket|connect|disconnect|timeout|fatal|exception|crash|error|warn|vulkan|egl|dxvk|opengl|xserver|guestprogram|processhelper)");
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null && count < 350) {
@@ -258,6 +262,68 @@ public class WowDiagnosticsActivity extends Activity {
             if (process != null) process.destroy();
         }
         return result.toString();
+    }
+
+    /**
+     * Copies only small, text-like runtime log files from this app's private and app-specific
+     * external directories. It never scans arbitrary shared storage or includes config files.
+     */
+    private String appendRuntimeFiles() {
+        StringBuilder out = new StringBuilder();
+        ArrayList<File> candidates = new ArrayList<>();
+        collectRuntimeLogCandidates(getFilesDir(), candidates, 0);
+        File external = getExternalFilesDir(null);
+        if (external != null) collectRuntimeLogCandidates(external, candidates, 0);
+        candidates.sort(Comparator.comparingLong(File::lastModified).reversed());
+        int files = 0;
+        long totalBytes = 0;
+        for (File file : candidates) {
+            if (files >= 15 || totalBytes >= 1024 * 1024) break;
+            long size = file.length();
+            if (size <= 0 || size > 256 * 1024 || totalBytes + size > 1024 * 1024) continue;
+            out.append("\n--- ").append(file.getName()).append(" (")
+                    .append(size).append(" bytes; modified ").append(new Date(file.lastModified()))
+                    .append(") ---\n");
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    new java.io.FileInputStream(file), StandardCharsets.UTF_8))) {
+                String line;
+                int lines = 0;
+                while ((line = reader.readLine()) != null && lines < 500) {
+                    out.append(redact(line)).append("\n");
+                    lines++;
+                }
+                totalBytes += size;
+                files++;
+            } catch (Exception error) {
+                out.append("Could not read file: ").append(safe(error.toString())).append("\n");
+            }
+        }
+        if (files == 0) out.append("No app-accessible Wine/Box64/runtime log files found. Android logcat above may still contain runtime diagnostics.\n");
+        else out.append("\nIncluded ").append(files).append(" file(s), ").append(totalBytes).append(" bytes total.\n");
+        return out.toString();
+    }
+
+    private void collectRuntimeLogCandidates(File directory, ArrayList<File> output, int depth) {
+        if (directory == null || depth > 6 || output.size() >= 80) return;
+        File[] entries = directory.listFiles();
+        if (entries == null) return;
+        for (File entry : entries) {
+            if (output.size() >= 80) return;
+            if (entry.isDirectory()) {
+                if (!entry.getName().startsWith(".") && !entry.getName().equalsIgnoreCase("cache"))
+                    collectRuntimeLogCandidates(entry, output, depth + 1);
+                continue;
+            }
+            if (!entry.isFile()) continue;
+            String name = entry.getName().toLowerCase(Locale.ROOT);
+            boolean textLike = name.endsWith(".log") || name.endsWith(".txt") ||
+                    name.contains("logcat") || name.contains("stdout") || name.contains("stderr");
+            boolean runtimeName = name.contains("wine") || name.contains("box64") ||
+                    name.contains("wineserver") || name.contains("xserver") ||
+                    name.contains("dxvk") || name.contains("vulkan") ||
+                    name.contains("crash") || name.contains("runtime");
+            if (textLike && runtimeName && entry.length() <= 256 * 1024) output.add(entry);
+        }
     }
 
     private String redact(String line) {
