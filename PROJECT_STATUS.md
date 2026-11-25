@@ -230,3 +230,10 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Corrected both so the generated manifest remains valid XML and the generated companion Activity contains normal Java line breaks.
 - Commit: `f7a5c3c8bf80c0b5f21c3a7ba0e1eced5065cfc9`.
 - This is a source-level correction only. A fresh GitHub Actions run must complete successfully before the integrated APK can be called build-verified.
+
+
+## 2026-11-25 — Direct game-folder linking UI wording
+- Updated the Flutter launcher to consistently describe selecting the existing WoW client as linking the original folder, not importing/copying it.
+- Updated the native-settings prerequisite message to instruct users to link the original WoW 3.3.5a folder through Android's folder picker.
+- Commit: `e37fb2710302fe17ffac38d278fed3c6f1250c2f`.
+- This is a UI wording correction; no runtime behavior or gameplay verification is claimed.
