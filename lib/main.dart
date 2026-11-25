@@ -324,7 +324,7 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       await _storageChannel.invokeMethod<bool>('cancelGameImport');
     } on PlatformException catch (error) {
-      if (mounted) showInfo('Could not cancel import', error.message ?? 'Please wait for the current file operation to finish.');
+      if (mounted) showInfo('Folder linking status', error.message ?? 'The original game folder is linked directly; no import or copy is running.');
     }
   }
 
@@ -348,7 +348,7 @@ class _LauncherPageState extends State<LauncherPage> {
       final uri = await _storageChannel.invokeMethod<String>('pickGameFolderTree');
       if (!mounted || uri == null) return;
       final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
-      setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Imported WoW folder'; selectedLocale = null; gameImporting = false; gameImportCancelling = false; });
+      setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Linked original WoW folder'; selectedLocale = null; gameImporting = false; gameImportCancelling = false; });
       await _refreshGameLocales();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -852,7 +852,7 @@ class _LauncherPageState extends State<LauncherPage> {
                     onTap: () => _openNativeScreen(
                       'openNativeWowSettings',
                       'WoW settings unavailable',
-                      'Select and import a valid WoW 3.3.5a game folder first.',
+                      'Link the original WoW 3.3.5a game folder first using the Android folder picker.',
                     ),
                   ),
                   _nativeSettingsTile(
