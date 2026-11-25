@@ -254,3 +254,10 @@ The current branch README describes a Flutter launcher/helper prototype and says
 - Reviewed the failed native workflow logs. `WowLKCompanionActivity.scanGameTree()` called `WowGameFolderImporter.resolveAndValidateTree()` in two fallback branches without handling its declared `IOException`, stopping `compileReleaseJavaWithJavac`.
 - Added a small resolver wrapper that converts the checked storage error into a descriptive `IllegalStateException` for the Flutter method-channel error handler, and routed both fallback branches through it. The direct folder-selection path already catches exceptions and remains unchanged.
 - This fixes the specific compiler error reported by the failed run; a fresh workflow must still confirm the full APK build.
+
+
+## 2026-11-25 — Continue Play after first-time native folder selection
+- Updated the native SAF picker callback so a folder selected from the hidden native host continues the pending Play action instead of returning to an idle launcher state.
+- Cancelling or failing the native picker now closes the hidden host when it was opened by the Flutter companion, returning the user to the visible launcher.
+- The normal Flutter-first folder-linking flow remains unchanged.
+- A new integrated build is required to verify this source change.

@@ -87,7 +87,10 @@ activity_result = """
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQUEST_WOW_GAME_TREE) return;
-        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            if (launchedFromCompanion) finish();
+            return;
+        }
 
         Uri treeUri = data.getData();
         int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -97,6 +100,8 @@ activity_result = """
             preferences.edit().putString(PREF_GAME_FOLDER, originalGameFolder.getAbsolutePath()).apply();
             updateStatus();
             Toast.makeText(this, "Original WoW folder linked. No game files were copied.", Toast.LENGTH_LONG).show();
+            // If Play opened this picker, continue with the game launch after linking.
+            if (launchedFromCompanion) onPlay();
         } catch (Exception error) {
             Toast.makeText(this, error.getMessage() == null ? "Could not access the original WoW folder." : error.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -178,6 +183,7 @@ required_fragments = [
     "Intent.ACTION_OPEN_DOCUMENT_TREE",
     "Environment.isExternalStorageManager()",
     "startActivityForResult(intent, REQUEST_WOW_GAME_TREE)",
+    "if (launchedFromCompanion) onPlay();",
 ]
 for fragment in required_fragments:
     if fragment not in text:
