@@ -337,8 +337,18 @@ class _LauncherPageState extends State<LauncherPage> {
     try {
       final uri = await _storageChannel.invokeMethod<String>('getSavedGameTreeUri');
       final importedPath = await _storageChannel.invokeMethod<String>('getImportedGamePath');
-      if (mounted && uri != null) {
-        setState(() { gameTreeUri = uri; gameFolder = importedPath ?? 'Linked original WoW folder'; });
+      if (!mounted || uri == null) return;
+      setState(() {
+        gameTreeUri = uri;
+        gameFolder = importedPath ?? 'Linked original WoW folder';
+      });
+      // Restore the locale list as well as the saved folder URI. Without this,
+      // relaunching the app could silently fall back to enUS on other clients.
+      await _refreshGameLocales();
+    } on PlatformException catch (error) {
+      if (mounted) {
+        showInfo('Saved game folder unavailable',
+            error.message ?? 'Please grant access to the original WoW folder again.');
       }
     } catch (_) {}
   }
@@ -387,7 +397,7 @@ class _LauncherPageState extends State<LauncherPage> {
     }
   }
 
-  Future<String?> _chooseGameLocale() async => selectedLocale ?? 'enUS';
+  Future<String?> _chooseGameLocale() async => selectedLocale;
 
   Future<void> applyRealmToGameFolder(ServerProfile profile) async {
     final treeUri = gameTreeUri;
